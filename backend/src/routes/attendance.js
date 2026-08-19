@@ -10,47 +10,73 @@ const attendanceService = require('../services/attendanceService');
 router.use(authenticate);
 
 router.get('/today', (req, res) => {
-  const summary = attendanceService.getTodaySummary(req.user.id);
-  if (!summary) {
-    return res.status(404).json({ success: false, error: 'Usuario no encontrado' });
+  try {
+    const summary = attendanceService.getTodaySummary(req.user.id);
+    if (!summary) {
+      return res.status(404).json({ success: false, error: 'Usuario no encontrado' });
+    }
+    return res.json({ success: true, data: summary });
+  } catch (err) {
+    console.error('[attendance/today]', err.message);
+    return res.status(500).json({
+      success: false,
+      error: 'Error al obtener resumen del día'
+    });
   }
-  res.json({ success: true, data: summary });
 });
 
 function handleCheck(tipo) {
   return (req, res) => {
-    const {
-      latitud,
-      longitud,
-      precision_gps,
-      fotografia_base64,
-      dispositivo,
-      client_timestamp
-    } = req.body;
+    try {
+      const body = req.body || {};
+      const {
+        latitud,
+        longitud,
+        precision_gps,
+        fotografia_base64,
+        dispositivo,
+        client_timestamp
+      } = body;
 
-    if (latitud == null || longitud == null) {
-      return res.status(400).json({
+      if (latitud == null || longitud == null) {
+        return res.status(400).json({
+          success: false,
+          error: 'Latitud y longitud son requeridas'
+        });
+      }
+
+      const lat = Number(latitud);
+      const lng = Number(longitud);
+      if (Number.isNaN(lat) || Number.isNaN(lng)) {
+        return res.status(400).json({
+          success: false,
+          error: 'Latitud y longitud deben ser números válidos'
+        });
+      }
+
+      const result = attendanceService.processCheck({
+        userId: req.user.id,
+        tipo,
+        latitud: lat,
+        longitud: lng,
+        precision_gps: precision_gps != null ? Number(precision_gps) : null,
+        fotografia_base64,
+        dispositivo,
+        client_timestamp
+      });
+
+      if (!result.success) {
+        return res.status(400).json(result);
+      }
+
+      return res.status(201).json(result);
+    } catch (err) {
+      console.error('[attendance/' + tipo + ']', err.message);
+      return res.status(500).json({
         success: false,
-        error: 'Latitud y longitud son requeridas'
+        error: 'Error al registrar el marcaje'
       });
     }
-
-    const result = attendanceService.processCheck({
-      userId: req.user.id,
-      tipo,
-      latitud: Number(latitud),
-      longitud: Number(longitud),
-      precision_gps: precision_gps ? Number(precision_gps) : null,
-      fotografia_base64,
-      dispositivo,
-      client_timestamp
-    });
-
-    if (!result.success) {
-      return res.status(400).json(result);
-    }
-
-    res.status(201).json(result);
   };
 }
 
