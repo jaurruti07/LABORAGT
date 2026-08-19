@@ -1,6 +1,3 @@
-/**
- * Geolocalización
- */
 const Geo = {
   async getCurrentPosition() {
     return new Promise((resolve, reject) => {
@@ -8,7 +5,6 @@ const Geo = {
         reject(new Error('Geolocalización no disponible en este dispositivo'));
         return;
       }
-
       navigator.geolocation.getCurrentPosition(
         (pos) => {
           resolve({
@@ -24,11 +20,7 @@ const Geo = {
           if (err.code === 3) msg = 'Tiempo de espera agotado al obtener ubicación';
           reject(new Error(msg));
         },
-        {
-          enableHighAccuracy: true,
-          timeout: 15000,
-          maximumAge: 0
-        }
+        { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
       );
     });
   }
