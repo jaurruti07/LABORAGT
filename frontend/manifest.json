@@ -1,0 +1,18 @@
+{
+  "name": "LaboraGT",
+  "short_name": "LaboraGT",
+  "description": "Control inteligente y transparente de la jornada laboral",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#F8FAFC",
+  "theme_color": "#0F4C81",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "assets/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
