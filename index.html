@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#0F4C81" />
+  <title>LaboraGT — Control de jornada laboral</title>
+  <style>
+    :root {
+      --primary: #0F4C81;
+      --primary-dark: #0A3559;
+      --bg: #F8FAFC;
+      --surface: #fff;
+      --border: #E2E8F0;
+      --text: #0F172A;
+      --muted: #64748B;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: Inter, system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      line-height: 1.5;
+    }
+    .wrap { max-width: 720px; margin: 0 auto; padding: 48px 24px; }
+    .logo { font-size: 28px; font-weight: 700; color: var(--primary); margin-bottom: 8px; }
+    .tagline { color: var(--muted); font-size: 16px; margin-bottom: 32px; }
+    .cards { display: grid; gap: 16px; margin-bottom: 40px; }
+    @media (min-width: 560px) { .cards { grid-template-columns: 1fr 1fr; } }
+    .card {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+      padding: 24px; text-decoration: none; color: inherit;
+      transition: box-shadow 0.15s, border-color 0.15s; display: block;
+    }
+    .card:hover { border-color: var(--primary); box-shadow: 0 4px 16px rgba(15, 76, 129, 0.12); }
+    .card h2 { font-size: 18px; color: var(--primary); margin-bottom: 8px; }
+    .card p { font-size: 14px; color: var(--muted); }
+    .card .btn {
+      display: inline-block; margin-top: 16px; background: var(--primary);
+      color: #fff; padding: 10px 18px; border-radius: 8px; font-size: 14px; font-weight: 600;
+    }
+    .card.admin .btn { background: var(--primary-dark); }
+    .note {
+      background: #FEF3C7; border: 1px solid #F59E0B; border-radius: 10px;
+      padding: 16px; font-size: 14px; color: #92400E;
+    }
+    .note strong { display: block; margin-bottom: 6px; }
+    footer { margin-top: 40px; font-size: 13px; color: var(--muted); text-align: center; }
+    footer a { color: var(--primary); }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="logo">LaboraGT</div>
+    <p class="tagline">Control inteligente y transparente de la jornada laboral.</p>
+    <div class="cards">
+      <a class="card" href="frontend/">
+        <h2>PWA Colaborador</h2>
+        <p>Marcaje de entrada, almuerzo y salida con evidencia fotográfica y geolocalización.</p>
+        <span class="btn">Abrir app →</span>
+      </a>
+      <a class="card admin" href="admin/">
+        <h2>Panel Admin</h2>
+        <p>Dashboard, usuarios, marcajes e incidencias para jefes y administradores.</p>
+        <span class="btn">Abrir panel →</span>
+      </a>
+    </div>
+    <div class="note">
+      <strong>Importante — API backend</strong>
+      GitHub Pages solo sirve archivos estáticos. El backend Node.js debe ejecutarse por separado
+      (local o en un hosting). Mientras no haya API, el login no podrá autenticar.
+      <br><br>
+      Demo local: <code>cd backend && npm install && npm run dev</code>
+      <br>
+      Credenciales: EMP-001 / ACT-2026 (colaborador) · EMP-002 / ACT-2026 (jefe)
+    </div>
+    <footer>
+      <a href="https://github.com/jaurruti07/LABORAGT">Repositorio en GitHub</a>
+      · Documentación en <code>/docs</code>
+    </footer>
+  </div>
+</body>
+</html>
