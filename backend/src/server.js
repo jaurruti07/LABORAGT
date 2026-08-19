@@ -1,5 +1,6 @@
 /**
  * LaboraGT Backend - Servidor principal
+ * Control inteligente y transparente de la jornada laboral
  */
 
 require('dotenv').config();
@@ -16,8 +17,14 @@ const adminRoutes = require('./routes/admin');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Necesario detrás de proxy (Render, nginx, etc.)
+app.set('trust proxy', 1);
+
 app.use(helmet());
-app.use(cors({ origin: process.env.CORS_ORIGIN || '*', credentials: true }));
+app.use(cors({
+  origin: process.env.CORS_ORIGIN || '*',
+  credentials: true
+}));
 
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -57,12 +64,14 @@ app.use((err, req, res, next) => {
   console.error('[ERROR]', err.message);
   res.status(err.status || 500).json({
     success: false,
-    error: process.env.NODE_ENV === 'production' ? 'Error interno del servidor' : err.message
+    error: process.env.NODE_ENV === 'production'
+      ? 'Error interno del servidor'
+      : err.message
   });
 });
 
 app.listen(PORT, () => {
-  console.log(`LaboraGT API escuchando en http://localhost:${PORT}`);
+  console.log(`LaboraGT API escuchando en puerto ${PORT}`);
   console.log(`Entorno: ${process.env.NODE_ENV || 'development'}`);
 });
 

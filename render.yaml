@@ -1,0 +1,25 @@
+# LaboraGT — Blueprint de despliegue en Render
+# https://render.com/docs/blueprint-spec
+
+services:
+  - type: web
+    name: laboragt-api
+    runtime: node
+    rootDir: backend
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRES_IN
+        value: 30m
+      - key: CORS_ORIGIN
+        value: https://jaurruti07.github.io
+      - key: ALLOW_OFFLINE_SYNC
+        value: "true"
+      - key: REJECT_OUTSIDE_LOCATION
+        value: "false"
