@@ -29,11 +29,12 @@ Aplicación institucional moderna para el control digital de marcaje de entrada,
 | Reglas de negocio | Completadas |
 | Seguridad y auditoría | Completada |
 | Plan de pruebas | Completado |
-| Diseño UX/UI | En progreso |
+| Diseño UX/UI | Completado |
 | MVP funcional | Pendiente |
 
 ## Documentación
 
+### Arquitectura y reglas
 - [Arquitectura técnica](docs/01-arquitectura-tecnica.md)
 - [Modelo de datos y ER](docs/02-modelo-datos.md)
 - [Flujos de autenticación y marcaje](docs/03-flujos.md)
@@ -43,6 +44,11 @@ Aplicación institucional moderna para el control digital de marcaje de entrada,
 - [Reglas de negocio](docs/07-reglas-negocio.md)
 - [Estrategia de seguridad y auditoría](docs/08-seguridad-auditoria.md)
 - [Plan de pruebas](docs/09-plan-pruebas.md)
+
+### Diseño UX/UI
+- [Identidad visual y sistema de diseño](docs/ux/10-identidad-visual.md)
+- [Wireframes App Colaborador](docs/ux/11-wireframes-colaborador.md)
+- [Wireframes Panel Administrativo](docs/ux/12-wireframes-admin.md)
 
 ## Stack propuesto (MVP)
 
