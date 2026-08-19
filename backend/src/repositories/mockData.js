@@ -3,8 +3,6 @@
  * Posteriormente se reemplazará por GoogleSheetsUserRepository etc.
  */
 
-const { v4: uuidv4 } = require('uuid');
-
 const users = [
   {
     id: 'usr-001',
