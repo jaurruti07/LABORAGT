@@ -36,22 +36,68 @@ Object.assign(App, {
   },
 
   renderPermissions(motivos, list, teamList, isBoss) {
-    const motivoOpts = Object.entries(motivos || {})
-      .map(([k, v]) => `<option value="${k}">${v}</option>`)
+    const MOTIVO_META = {
+      ENFERMEDAD: {
+        icon: '🤒',
+        hint: 'Incapacidad o malestar temporal',
+        tone: 'salud'
+      },
+      CITACION_JUDICIAL: {
+        icon: '⚖️',
+        hint: 'Juzgado u órgano judicial',
+        tone: 'legal'
+      },
+      CITACION_GUBERNAMENTAL: {
+        icon: '🏛️',
+        hint: 'Entidad del Estado',
+        tone: 'gov'
+      },
+      IGSS: {
+        icon: '🏥',
+        hint: 'Cita médica o trámite IGSS',
+        tone: 'salud'
+      },
+      OTRO: {
+        icon: '📋',
+        hint: 'Otro motivo justificado',
+        tone: 'otro'
+      }
+    };
+
+    const motivoKeys = Object.keys(motivos || {});
+    const catalogHtml = motivoKeys
+      .map((k, idx) => {
+        const label = motivos[k];
+        const meta = MOTIVO_META[k] || { icon: '📌', hint: '', tone: 'otro' };
+        const selected = idx === 0 ? ' is-selected' : '';
+        return `
+          <button type="button" class="motivo-card${selected}" data-motivo="${k}" role="radio"
+            aria-checked="${idx === 0 ? 'true' : 'false'}">
+            <span class="motivo-icon motivo-tone-${meta.tone}" aria-hidden="true">${meta.icon}</span>
+            <span class="motivo-body">
+              <span class="motivo-label">${label}</span>
+              <span class="motivo-hint">${meta.hint}</span>
+            </span>
+            <span class="motivo-check" aria-hidden="true">✓</span>
+          </button>`;
+      })
       .join('');
 
     const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Guatemala' });
+    const firstMotivo = motivoKeys[0] || '';
 
     const items = list.length
-      ? list.map((p) => {
-          const badge =
-            p.estado === 'APROBADO' ? 'ok' : p.estado === 'RECHAZADO' ? 'late' : 'partial';
-          return `
+      ? list
+          .map((p) => {
+            const badge =
+              p.estado === 'APROBADO' ? 'ok' : p.estado === 'RECHAZADO' ? 'late' : 'partial';
+            const meta = MOTIVO_META[p.motivo] || { icon: '📌' };
+            return `
             <div class="tl-item">
               <div class="tl-dot ${badge}"></div>
               <div class="tl-content">
                 <div class="tl-top">
-                  <span class="tl-date">${p.fecha}</span>
+                  <span class="tl-date">${meta.icon} ${p.fecha}</span>
                   <span class="tl-badge ${badge}">${p.estado}</span>
                 </div>
                 <div class="tl-meta">
@@ -62,24 +108,26 @@ Object.assign(App, {
                 </div>
               </div>
             </div>`;
-        }).join('')
+          })
+          .join('')
       : '<p class="empty-hint">Aún no has solicitado permisos.</p>';
 
     const pending = (teamList || []).filter((p) => p.estado === 'PENDIENTE');
     const teamHtml = isBoss
-      ? (pending.length
-          ? pending
-              .map((p) => {
-                const col = p.colaborador
-                  ? `${p.colaborador.nombre} ${p.colaborador.apellidos}`
-                  : p.nombre_usuario || 'Colaborador';
-                const cod = p.colaborador ? p.colaborador.codigo : '';
-                return `
+      ? pending.length
+        ? pending
+            .map((p) => {
+              const col = p.colaborador
+                ? `${p.colaborador.nombre} ${p.colaborador.apellidos}`
+                : p.nombre_usuario || 'Colaborador';
+              const cod = p.colaborador ? p.colaborador.codigo : '';
+              const meta = MOTIVO_META[p.motivo] || { icon: '📌' };
+              return `
             <div class="tl-item" data-perm-id="${p.id}">
               <div class="tl-dot partial"></div>
               <div class="tl-content">
                 <div class="tl-top">
-                  <span class="tl-date">${col}</span>
+                  <span class="tl-date">${meta.icon} ${col}</span>
                   <span class="tl-badge partial">PENDIENTE</span>
                 </div>
                 <div class="tl-meta">
@@ -96,21 +144,30 @@ Object.assign(App, {
                 </div>
               </div>
             </div>`;
-              })
-              .join('')
-          : '<p class="empty-hint">No hay solicitudes pendientes del equipo.</p>')
+            })
+            .join('')
+        : '<p class="empty-hint">No hay solicitudes pendientes del equipo.</p>'
       : '';
 
     document.getElementById('perm-content').innerHTML = `
       <section class="perf-section">
         <h3 class="perf-section-title">Nueva solicitud</h3>
-        <div class="chart-card" style="padding:16px">
+        <div class="chart-card perm-form-card">
           <form id="perm-form">
+            <input type="hidden" id="perm-motivo" value="${firstMotivo}" required />
+
+            <div class="form-group">
+              <label class="motivo-catalog-label">Motivo del permiso</label>
+              <div class="motivo-catalog" role="radiogroup" aria-label="Catálogo de motivos">
+                ${catalogHtml}
+              </div>
+            </div>
+
             <div class="form-group">
               <label for="perm-fecha">Fecha del permiso</label>
               <input id="perm-fecha" type="date" required value="${today}" />
             </div>
-            <div class="form-group" style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <div class="form-group form-row-2">
               <div>
                 <label for="perm-ini">Hora inicio</label>
                 <input id="perm-ini" type="time" required value="08:00" />
@@ -121,20 +178,16 @@ Object.assign(App, {
               </div>
             </div>
             <div class="form-group">
-              <label for="perm-motivo">Motivo</label>
-              <select id="perm-motivo" required>${motivoOpts}</select>
-            </div>
-            <div class="form-group">
               <label for="perm-desc">Detalle / justificación</label>
-              <input id="perm-desc" type="text" required minlength="5"
-                placeholder="Ej. Cita IGSS 9:30 a.m. / Citación juzgado" />
+              <textarea id="perm-desc" required minlength="5" rows="3"
+                placeholder="Ej. Cita IGSS 9:30 a.m. / Citación juzgado civil"></textarea>
             </div>
-            <p style="font-size:12px;color:var(--color-text-muted);margin-bottom:12px">
+            <p class="perm-hint">
               Al autorizarse, el sistema registrará permiso especial y no exigirá el marcaje en ese rango (hora Guatemala).
             </p>
             <button type="submit" class="btn btn-primary" id="btn-perm">Enviar solicitud</button>
           </form>
-          <div id="perm-msg" style="margin-top:12px"></div>
+          <div id="perm-msg" class="perm-msg"></div>
         </div>
       </section>
 
@@ -152,10 +205,28 @@ Object.assign(App, {
         <div class="timeline">${items}</div>
       </section>`;
 
+    /* Selección de motivo (catálogo) */
+    const hiddenMotivo = document.getElementById('perm-motivo');
+    document.querySelectorAll('.motivo-card').forEach((card) => {
+      card.addEventListener('click', () => {
+        document.querySelectorAll('.motivo-card').forEach((c) => {
+          c.classList.remove('is-selected');
+          c.setAttribute('aria-checked', 'false');
+        });
+        card.classList.add('is-selected');
+        card.setAttribute('aria-checked', 'true');
+        hiddenMotivo.value = card.getAttribute('data-motivo');
+      });
+    });
+
     document.getElementById('perm-form').addEventListener('submit', async (e) => {
       e.preventDefault();
       const btn = document.getElementById('btn-perm');
       const msg = document.getElementById('perm-msg');
+      if (!hiddenMotivo.value) {
+        msg.innerHTML = '<div class="error-msg">Seleccione un motivo del catálogo.</div>';
+        return;
+      }
       btn.disabled = true;
       btn.classList.add('is-loading');
       try {
@@ -163,7 +234,7 @@ Object.assign(App, {
           fecha: document.getElementById('perm-fecha').value,
           hora_inicio: document.getElementById('perm-ini').value,
           hora_fin: document.getElementById('perm-fin').value,
-          motivo: document.getElementById('perm-motivo').value,
+          motivo: hiddenMotivo.value,
           descripcion: document.getElementById('perm-desc').value.trim()
         });
         msg.innerHTML =
