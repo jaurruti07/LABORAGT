@@ -85,7 +85,6 @@ const App = {
               <div class="skeleton-block sk-line"></div>
               <div class="skeleton-block sk-card"></div>
               <div class="skeleton-block sk-card short"></div>
-              <div class="skeleton-block sk-card short"></div>
             </div>
             <p class="loader-text">Cargando tu jornada…</p>
             <span class="loader-brand">LABORAGT</span>
@@ -107,7 +106,10 @@ const App = {
     const marcajes = data.marcajes || [];
     const siguiente = data.siguiente_marcaje;
     const saludo = this.getGreeting();
-    const fecha = new Date().toLocaleDateString('es-GT', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    const fecha = new Date().toLocaleDateString('es-GT', {
+      timeZone: 'America/Guatemala',
+      weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+    });
     const tiposLabel = { ENTRADA: 'Entrada', SALIDA_ALMUERZO: 'Salida a almuerzo', REGRESO_ALMUERZO: 'Regreso de almuerzo', SALIDA: 'Salida' };
     const pasos = ['ENTRADA', 'SALIDA_ALMUERZO', 'REGRESO_ALMUERZO', 'SALIDA'];
     const hechos = marcajes.map(m => m.tipo);
@@ -119,14 +121,18 @@ const App = {
     }).join('');
     const listaHtml = pasos.map(t => {
       const m = marcajes.find(x => x.tipo === t);
-      if (m) return `<li><span>✓ ${tiposLabel[t]}</span><span class="hora">${m.hora.slice(0,5)}</span></li>`;
+      if (m) {
+        const label = m.estado === 'PERMISO_ESPECIAL' ? 'Permiso' : tiposLabel[t];
+        return `<li><span>✓ ${label}</span><span class="hora">${(m.hora || '').slice(0,5)}</span></li>`;
+      }
       return `<li><span style="color:var(--color-text-muted)">— ${tiposLabel[t]}</span><span class="hora">pendiente</span></li>`;
     }).join('');
     const btnLabel = siguiente ? `MARCAR ${tiposLabel[siguiente].toUpperCase()}` : 'Jornada finalizada';
+    const tzNote = data.timezone ? ` · ${data.timezone}` : '';
 
     document.getElementById('dashboard-content').innerHTML = `
       <p class="greeting anim-fade-up">${saludo}, ${user.nombre}</p>
-      <p class="date-label anim-fade-up anim-delay-1">${fecha}</p>
+      <p class="date-label anim-fade-up anim-delay-1">${fecha}${tzNote}</p>
       <div class="section"><div class="card card-accent-success card-enter anim-delay-1">
         <div class="section-title">Estado de mi jornada</div>
         <div style="font-size:18px;font-weight:600">${data.jornada_completa ? '🟢 Jornada completada' : '🟢 Jornada en curso'}</div>
@@ -152,7 +158,7 @@ const App = {
           : `<button class="btn btn-primary" disabled>Jornada finalizada</button>`}
         <div class="nav-secondary">
           <button class="btn btn-secondary" id="btn-historial">Mi rendimiento</button>
-          <button class="btn btn-secondary" disabled>Permisos</button>
+          <button class="btn btn-secondary" id="btn-permisos">Permisos</button>
         </div>
       </div>`;
 
@@ -161,10 +167,12 @@ const App = {
     }
     const histBtn = document.getElementById('btn-historial');
     if (histBtn) histBtn.addEventListener('click', () => this.showPerformance());
+    const permBtn = document.getElementById('btn-permisos');
+    if (permBtn) permBtn.addEventListener('click', () => this.showPermissions());
   },
 
   getGreeting() {
-    const h = new Date().getHours();
+    const h = Number(new Date().toLocaleString('en-US', { timeZone: 'America/Guatemala', hour: 'numeric', hour12: false }));
     if (h < 12) return 'Buenos días';
     if (h < 19) return 'Buenas tardes';
     return 'Buenas noches';
@@ -195,34 +203,22 @@ const App = {
           <div class="mark-steps-card">
             <div class="mark-step" id="step-bio">
               <div class="step-icon pending" id="c-bio">1</div>
-              <div class="step-text">
-                <div class="step-label">Identidad</div>
-                <div class="step-hint">Sesión verificada</div>
-              </div>
+              <div class="step-text"><div class="step-label">Identidad</div><div class="step-hint">Sesión verificada</div></div>
             </div>
             <div class="mark-step" id="step-cam">
               <div class="step-icon pending" id="c-cam">2</div>
-              <div class="step-text">
-                <div class="step-label">Fotografía</div>
-                <div class="step-hint">Evidencia visual del marcaje</div>
-              </div>
+              <div class="step-text"><div class="step-label">Fotografía</div><div class="step-hint">Evidencia visual</div></div>
             </div>
             <div class="mark-step" id="step-geo">
               <div class="step-icon pending" id="c-geo">3</div>
-              <div class="step-text">
-                <div class="step-label">Ubicación GPS</div>
-                <div class="step-hint">Validación del punto autorizado</div>
-              </div>
+              <div class="step-text"><div class="step-label">Ubicación GPS</div><div class="step-hint">Punto autorizado</div></div>
             </div>
             <div class="mark-step" id="step-val">
               <div class="step-icon pending" id="c-val">4</div>
-              <div class="step-text">
-                <div class="step-label">Validaciones</div>
-                <div class="step-hint">Horario y reglas de negocio</div>
-              </div>
+              <div class="step-text"><div class="step-label">Validaciones</div><div class="step-hint">Horario Guatemala</div></div>
             </div>
           </div>
-          <div class="mark-status" id="flow-status">Preparando validaciones…</div>
+          <div class="mark-status" id="flow-status">Preparando…</div>
         </div>
         <div class="mark-flow-footer">
           <button class="btn btn-primary" id="btn-confirm" disabled>Confirmar y registrar</button>
@@ -261,20 +257,20 @@ const App = {
         status.className = 'mark-status ok';
       } catch (e) {
         setStep('c-cam', 'done');
-        status.textContent = 'Foto omitida (puedes continuar en demo)';
+        status.textContent = 'Foto omitida (demo)';
         status.className = 'mark-status warn';
       }
 
       setStep('c-geo', 'loading');
       status.className = 'mark-status';
-      status.textContent = 'Obteniendo ubicación GPS…';
+      status.textContent = 'Obteniendo GPS…';
       geoData = await Geo.getCurrentPosition();
       setStep('c-geo', 'done');
-      status.textContent = 'Ubicación lista · precisión ±' + Math.round(geoData.precision_gps) + ' m';
+      status.textContent = 'Ubicación ±' + Math.round(geoData.precision_gps) + ' m';
       status.className = 'mark-status ok';
 
       setStep('c-val', 'done');
-      status.textContent = 'Todo listo. Confirma para registrar.';
+      status.textContent = 'Listo para registrar (hora Guatemala)';
       status.className = 'mark-status ok';
       const btn = document.getElementById('btn-confirm');
       btn.disabled = false;
@@ -282,10 +278,8 @@ const App = {
       btn.onclick = async () => {
         btn.disabled = true;
         btn.classList.add('is-loading');
-        btn.setAttribute('aria-busy', 'true');
         setStep('c-val', 'loading');
-        status.className = 'mark-status';
-        status.textContent = 'Enviando marcaje al servidor…';
+        status.textContent = 'Registrando…';
 
         const payload = {
           latitud: geoData.latitud,
@@ -310,7 +304,6 @@ const App = {
         }
       };
     } catch (err) {
-      status.className = 'mark-status';
       status.innerHTML = '<div class="error-msg">' + err.message + '</div>';
       const btn = document.getElementById('btn-confirm');
       btn.textContent = 'Reintentar';
@@ -325,15 +318,13 @@ const App = {
         <div class="result-flow screen-enter">
           <div class="result-circle err">✕</div>
           <div class="result-title">No se pudo registrar</div>
-          <p style="color:var(--color-text-secondary);margin-bottom:24px">${result.error || 'Error desconocido'}</p>
-          <button class="btn btn-primary" onclick="App.showDashboard()">Volver al inicio</button>
+          <p style="color:var(--color-text-secondary);margin-bottom:24px">${result.error || 'Error'}</p>
+          <button class="btn btn-primary" onclick="App.showDashboard()">Volver</button>
         </div>`;
       return;
     }
-
     const m = result.marcaje;
-    const isOk = m.estado === 'VALIDO';
-
+    const isOk = m.estado === 'VALIDO' || m.estado === 'PERMISO_ESPECIAL';
     this.root.innerHTML = `
       <div class="result-flow screen-enter">
         <div class="result-circle ${isOk ? 'ok' : 'warn'}">${isOk ? '✓' : '⚠'}</div>
@@ -341,8 +332,8 @@ const App = {
         <div class="result-time">${(m.hora || '').slice(0, 8)}</div>
         <div class="result-meta">
           <div class="result-meta-row"><span class="k">Estado</span><span class="v">${m.estado}</span></div>
-          <div class="result-meta-row"><span class="k">Ubicación</span><span class="v">${m.cumplimiento_geografico || '—'} · ${m.distancia_metros != null ? m.distancia_metros + ' m' : '—'}</span></div>
-          <div class="result-meta-row"><span class="k">Detalle</span><span class="v">${m.detalle || 'Sin observaciones'}</span></div>
+          <div class="result-meta-row"><span class="k">Zona horaria</span><span class="v">${m.timezone || 'America/Guatemala'}</span></div>
+          <div class="result-meta-row"><span class="k">Detalle</span><span class="v">${m.detalle || '—'}</span></div>
         </div>
         <button class="btn btn-primary" onclick="App.showDashboard()">Volver al inicio</button>
       </div>`;
