@@ -15,7 +15,6 @@ let ready = !useSheets;
 let initError = null;
 
 if (useSheets) {
-  // Caché mutable que replica la forma de mockData
   const mem = {
     users: [],
     attendanceStore: [],
@@ -28,6 +27,22 @@ if (useSheets) {
     findUserById(id) {
       return mem.users.find((u) => u.id === id);
     },
+    createUser(user) {
+      mem.users.push(user);
+      persistAllUsers().catch((err) =>
+        console.error('[sheets] createUser', err.message)
+      );
+      return user;
+    },
+    updateUser(user) {
+      const idx = mem.users.findIndex((u) => u.id === user.id);
+      if (idx >= 0) mem.users[idx] = user;
+      else mem.users.push(user);
+      persistAllUsers().catch((err) =>
+        console.error('[sheets] updateUser', err.message)
+      );
+      return user;
+    },
     getTodayAttendance(userId) {
       const { fechaGT } = require('../utils/time');
       const fecha = fechaGT();
@@ -37,7 +52,6 @@ if (useSheets) {
     },
     addAttendance(record) {
       mem.attendanceStore.push(record);
-      // Persistencia asíncrona en Sheets (no bloquea la respuesta)
       persistAttendance(record).catch((err) =>
         console.error('[sheets] append marcaje', err.message)
       );
@@ -76,7 +90,6 @@ if (useSheets) {
         .forEach((p) => (p.tipos_cubiertos || []).forEach((t) => set.add(t)));
       return [...set];
     },
-    /** Actualiza permiso en memoria + Sheets (para aprobar/rechazar) */
     updatePermission(perm) {
       const idx = mem.permissionStore.findIndex((p) => p.id === perm.id);
       if (idx >= 0) mem.permissionStore[idx] = perm;
@@ -90,7 +103,6 @@ if (useSheets) {
 
   store = mem;
 
-  // Carga inicial
   initFromSheets()
     .then(() => {
       ready = true;
@@ -101,8 +113,7 @@ if (useSheets) {
     .catch((err) => {
       initError = err.message;
       ready = false;
-      console.error('[data] Error cargando Sheets, revisa credenciales:', err.message);
-      console.error('[data] Se mantiene caché vacía hasta reintentar.');
+      console.error('[data] Error cargando Sheets:', err.message);
     });
 
   async function initFromSheets() {
@@ -129,7 +140,6 @@ if (useSheets) {
 
   async function persistAllPermissions() {
     const sheetsData = require('./sheetsData');
-    // Reescribir hoja completa desde memoria
     const client = require('./sheetsClient');
     const headers = sheetsData.PERM_HEADERS;
     const rows = [headers].concat(
@@ -155,7 +165,44 @@ if (useSheets) {
     await client.writeRange('PERMISOS!A1', rows);
   }
 
-  // Reintento de carga cada 2 min si falló al inicio
+  async function persistAllUsers() {
+    const sheetsData = require('./sheetsData');
+    const client = require('./sheetsClient');
+    const headers = sheetsData.USER_HEADERS;
+    const rows = [headers].concat(
+      mem.users.map((u) => [
+        u.id,
+        u.codigo_empleado,
+        u.dpi || '',
+        u.nombre,
+        u.apellidos,
+        u.correo || '',
+        u.telefono || '',
+        u.dependencia || '',
+        u.unidad || '',
+        u.cargo || '',
+        u.jefe_inmediato_id || '',
+        u.horario?.id || 'hor-001',
+        u.horario?.hora_entrada || '08:00',
+        u.horario?.hora_salida || '17:00',
+        u.horario?.inicio_almuerzo || '12:00',
+        u.horario?.fin_almuerzo || '13:00',
+        String(u.horario?.tolerancia_entrada_min ?? 10),
+        String(u.horario?.tolerancia_salida_min ?? 10),
+        String(u.horario?.tolerancia_almuerzo_min ?? 5),
+        u.ubicacion?.id || 'ubi-001',
+        u.ubicacion?.nombre || 'Sede',
+        String(u.ubicacion?.latitud ?? ''),
+        String(u.ubicacion?.longitud ?? ''),
+        String(u.ubicacion?.radio_metros ?? 100),
+        u.estado || 'activo',
+        u.rol || 'colaborador',
+        u.codigo_activacion || ''
+      ])
+    );
+    await client.writeRange('USUARIOS!A1', rows);
+  }
+
   setInterval(() => {
     if (!ready) {
       initFromSheets()
