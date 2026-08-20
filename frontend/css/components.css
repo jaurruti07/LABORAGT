@@ -7,7 +7,7 @@
   border-radius: var(--radius-sm);
   font-weight: 600;
   font-size: 16px;
-  transition: background 0.15s, transform 0.1s;
+  transition: background 0.2s ease, transform 0.2s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.25s ease;
   min-height: 52px;
   width: 100%;
 }
@@ -102,9 +102,4 @@
 
 .checklist .icon.done { background: var(--color-success); color: #fff; }
 .checklist .icon.pending { background: var(--color-border); color: var(--color-text-muted); }
-.checklist .icon.loading { background: var(--color-info); color: #fff; animation: pulse 1s infinite; }
-
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
-}
+.checklist .icon.loading { background: var(--color-info); color: #fff; }
