@@ -165,6 +165,16 @@ module.exports = {
   findUserById(id) {
     return users.find((u) => u.id === id);
   },
+  createUser(user) {
+    users.push(user);
+    return user;
+  },
+  updateUser(user) {
+    const idx = users.findIndex((u) => u.id === user.id);
+    if (idx >= 0) users[idx] = user;
+    else users.push(user);
+    return user;
+  },
   getTodayAttendance(userId) {
     const fecha = fechaGT();
     return attendanceStore.filter((m) => m.usuario_id === userId && m.fecha === fecha);
