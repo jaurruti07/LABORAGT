@@ -1,7 +1,3 @@
-/**
- * Rutas de marcajes
- */
-
 const express = require('express');
 const router = express.Router();
 const { authenticate } = require('../middleware/auth');
@@ -12,16 +8,13 @@ router.use(authenticate);
 router.get('/today', (req, res) => {
   try {
     const summary = attendanceService.getTodaySummary(req.user.id);
-    if (!summary) {
-      return res.status(404).json({ success: false, error: 'Usuario no encontrado' });
+    if (!summary.success) {
+      return res.status(summary.error === 'Usuario no encontrado' ? 404 : 500).json(summary);
     }
-    return res.json({ success: true, data: summary });
+    return res.json(summary);
   } catch (err) {
     console.error('[attendance/today]', err.message);
-    return res.status(500).json({
-      success: false,
-      error: 'Error al obtener resumen del día'
-    });
+    return res.status(500).json({ success: false, error: 'Error al obtener jornada de hoy' });
   }
 });
 
@@ -79,6 +72,30 @@ function handleCheck(tipo) {
     }
   };
 }
+
+router.get('/history', (req, res) => {
+  try {
+    const from = req.query.from || null;
+    const to = req.query.to || null;
+    const result = attendanceService.getHistory(req.user.id, from, to);
+    if (!result.success) return res.status(500).json(result);
+    return res.json(result);
+  } catch (err) {
+    console.error('[attendance/history]', err.message);
+    return res.status(500).json({ success: false, error: 'Error al obtener historial' });
+  }
+});
+
+router.get('/stats', (req, res) => {
+  try {
+    const result = attendanceService.getPerformanceStats(req.user.id);
+    if (!result.success) return res.status(500).json(result);
+    return res.json(result);
+  } catch (err) {
+    console.error('[attendance/stats]', err.message);
+    return res.status(500).json({ success: false, error: 'Error al obtener estadísticas' });
+  }
+});
 
 router.post('/check-in', handleCheck('ENTRADA'));
 router.post('/lunch-out', handleCheck('SALIDA_ALMUERZO'));

@@ -22,16 +22,11 @@ const API = {
     };
 
     const token = this.getToken();
-    if (token) {
-      headers['Authorization'] = 'Bearer ' + token;
-    }
+    if (token) headers['Authorization'] = 'Bearer ' + token;
 
     let res;
     try {
-      res = await fetch(CONFIG.API_BASE + path, {
-        ...options,
-        headers
-      });
+      res = await fetch(CONFIG.API_BASE + path, { ...options, headers });
     } catch (networkErr) {
       const err = new Error(
         'No se pudo conectar con el servidor. Si el API estuvo inactivo, espera ~1 min e intenta de nuevo.'
@@ -41,14 +36,12 @@ const API = {
     }
 
     const data = await res.json().catch(() => ({}));
-
     if (!res.ok) {
       const err = new Error(data.error || 'Error de comunicación');
       err.status = res.status;
       err.data = data;
       throw err;
     }
-
     return data;
   },
 
@@ -93,5 +86,20 @@ const API = {
       method: 'POST',
       body: JSON.stringify(payload)
     });
+  },
+
+  getHistory(from, to) {
+    let q = '';
+    if (from || to) {
+      const p = new URLSearchParams();
+      if (from) p.set('from', from);
+      if (to) p.set('to', to);
+      q = '?' + p.toString();
+    }
+    return this.request('/attendance/history' + q);
+  },
+
+  getStats() {
+    return this.request('/attendance/stats');
   }
 };
