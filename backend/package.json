@@ -1,6 +1,6 @@
 {
   "name": "laboragt-backend",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "LaboraGT - Backend API para control de jornada laboral",
   "main": "src/server.js",
   "scripts": {
@@ -17,7 +17,8 @@
     "bcryptjs": "^2.4.3",
     "uuid": "^10.0.0",
     "express-rate-limit": "^7.4.0",
-    "zod": "^3.23.8"
+    "zod": "^3.23.8",
+    "googleapis": "^144.0.0"
   },
   "engines": {
     "node": ">=18"
