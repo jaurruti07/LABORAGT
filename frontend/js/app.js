@@ -78,7 +78,7 @@ const App = {
 
   async showDashboard() {
     this.root.innerHTML = `
-      <div class="screen">
+      <div class="screen screen-enter">
         <div class="screen-header">
           <h1>LaboraGT</h1>
           <button class="btn btn-secondary" style="width:auto;min-height:36px;padding:8px 12px;font-size:13px"
@@ -145,11 +145,11 @@ const App = {
     const btnLabel = siguiente ? `MARCAR ${tiposLabel[siguiente].toUpperCase()}` : 'Jornada finalizada';
 
     document.getElementById('dashboard-content').innerHTML = `
-      <p class="greeting">${saludo}, ${user.nombre}</p>
-      <p class="date-label">${fecha}</p>
+      <p class="greeting anim-fade-up">${saludo}, ${user.nombre}</p>
+      <p class="date-label anim-fade-up anim-delay-1">${fecha}</p>
 
       <div class="section">
-        <div class="card card-accent-success">
+        <div class="card card-accent-success card-enter anim-delay-1">
           <div class="section-title">Estado de mi jornada</div>
           <div style="font-size:18px;font-weight:600">
             ${data.jornada_completa ? '🟢 Jornada completada' : '🟢 Jornada en curso'}
@@ -158,7 +158,7 @@ const App = {
       </div>
 
       <div class="section">
-        <div class="card">
+        <div class="card card-enter anim-delay-2">
           <div class="section-title">Horario de hoy</div>
           <div style="font-size:18px;font-weight:600">${horario.hora_entrada} — ${horario.hora_salida}</div>
           <div style="font-size:14px;color:var(--color-text-secondary);margin-top:4px">
@@ -168,7 +168,7 @@ const App = {
       </div>
 
       <div class="section">
-        <div class="card">
+        <div class="card card-enter anim-delay-3">
           <div class="section-title">Progreso de marcajes</div>
           <div class="progress-steps">${progressHtml}</div>
           <ul class="marcaje-list">${listaHtml}</ul>
@@ -176,7 +176,7 @@ const App = {
       </div>
 
       <div class="section">
-        <div class="card">
+        <div class="card card-enter anim-delay-4">
           <div class="section-title">Ubicación</div>
           <div>✓ Validación al momento del marcaje</div>
           <div style="font-size:13px;color:var(--color-text-secondary);margin-top:4px">
@@ -185,9 +185,9 @@ const App = {
         </div>
       </div>
 
-      <div class="mark-action">
+      <div class="mark-action anim-fade-up anim-delay-5">
         ${siguiente ? `
-          <button class="btn btn-primary" id="btn-marcar">
+          <button class="btn btn-primary btn-mark-pulse" id="btn-marcar">
             ${btnLabel}
           </button>
         ` : `
@@ -223,14 +223,14 @@ const App = {
     };
 
     this.root.innerHTML = `
-      <div class="screen">
+      <div class="screen screen-enter">
         <div class="screen-header">
           <button onclick="App.showDashboard()" style="font-size:18px">←</button>
           <h1>Confirmar marcaje</h1>
           <span></span>
         </div>
         <p style="margin-bottom:16px">Vas a registrar: <strong>${labels[tipo]}</strong></p>
-        <div class="card">
+        <div class="card card-enter">
           <ul class="checklist" id="checklist">
             <li><span class="icon pending" id="c-bio">1</span> Identidad</li>
             <li><span class="icon pending" id="c-cam">2</span> Cámara / Foto</li>
@@ -325,7 +325,7 @@ const App = {
   showResult(result) {
     if (!result.success) {
       this.root.innerHTML = `
-        <div class="screen result-screen">
+        <div class="screen result-screen screen-enter">
           <div class="result-icon">✕</div>
           <div class="result-title">No se pudo registrar</div>
           <p>${result.error || 'Error desconocido'}</p>
@@ -339,7 +339,7 @@ const App = {
     const isOk = m.estado === 'VALIDO';
 
     this.root.innerHTML = `
-      <div class="screen result-screen">
+      <div class="screen result-screen screen-enter">
         <div class="result-icon">${isOk ? '✓' : '⚠'}</div>
         <div class="result-title">${m.mensaje}</div>
         <div class="result-time">${m.hora}</div>
