@@ -31,6 +31,22 @@ const API = {
   },
   getDashboard() { return this.request('/admin/dashboard'); },
   getUsers() { return this.request('/admin/users'); },
+  getUser(id) { return this.request('/admin/users/' + id); },
+  createUser(body) {
+    return this.request('/admin/users', {
+      method: 'POST',
+      body: JSON.stringify(body)
+    });
+  },
+  updateUser(id, body) {
+    return this.request('/admin/users/' + id, {
+      method: 'PUT',
+      body: JSON.stringify(body)
+    });
+  },
+  deactivateUser(id) {
+    return this.request('/admin/users/' + id, { method: 'DELETE' });
+  },
   getAttendance(params = {}) {
     const q = new URLSearchParams(params).toString();
     return this.request('/admin/attendance' + (q ? '?' + q : ''));
