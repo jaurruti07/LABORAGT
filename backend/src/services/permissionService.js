@@ -6,7 +6,7 @@
 
 const crypto = require('crypto');
 const uuidv4 = () => crypto.randomUUID();
-const mock = require('../repositories/mockData');
+const data = require('../repositories');
 const { ahoraGT, tiposCubiertosPorRango } = require('../utils/time');
 
 const MOTIVOS = {
@@ -19,7 +19,7 @@ const MOTIVOS = {
 
 function listMine(userId) {
   try {
-    const list = mock.getPermissionsByUser(userId);
+    const list = data.getPermissionsByUser(userId);
     return { success: true, data: list.sort((a, b) => (a.fecha < b.fecha ? 1 : -1)) };
   } catch (err) {
     console.error('[permissionService.listMine]', err.message);
@@ -29,25 +29,24 @@ function listMine(userId) {
 
 function listPendingForBoss(bossId) {
   try {
-    const team = mock.users.filter(
+    const team = data.users.filter(
       (u) => u.jefe_inmediato_id === bossId || bossId === 'usr-002'
     );
     const teamIds = new Set(team.map((u) => u.id));
-    const list = mock.permissionStore.filter(
+    const list = data.permissionStore.filter(
       (p) => teamIds.has(p.usuario_id) && p.estado === 'PENDIENTE'
     );
     return {
       success: true,
-      data: list.map((p) => ({
-        ...p,
-        colaborador: mock.findUserById(p.usuario_id)
-          ? {
-              nombre: mock.findUserById(p.usuario_id).nombre,
-              apellidos: mock.findUserById(p.usuario_id).apellidos,
-              codigo: mock.findUserById(p.usuario_id).codigo_empleado
-            }
-          : null
-      }))
+      data: list.map((p) => {
+        const u = data.findUserById(p.usuario_id);
+        return {
+          ...p,
+          colaborador: u
+            ? { nombre: u.nombre, apellidos: u.apellidos, codigo: u.codigo_empleado }
+            : null
+        };
+      })
     };
   } catch (err) {
     console.error('[permissionService.listPendingForBoss]', err.message);
@@ -57,17 +56,17 @@ function listPendingForBoss(bossId) {
 
 function listAllForBoss(bossId) {
   try {
-    const team = mock.users.filter(
+    const team = data.users.filter(
       (u) => u.jefe_inmediato_id === bossId || u.rol === 'colaborador'
     );
     const teamIds = new Set(team.map((u) => u.id));
-    const list = mock.permissionStore
+    const list = data.permissionStore
       .filter((p) => teamIds.has(p.usuario_id))
       .sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
     return {
       success: true,
       data: list.map((p) => {
-        const u = mock.findUserById(p.usuario_id);
+        const u = data.findUserById(p.usuario_id);
         return {
           ...p,
           colaborador: u
@@ -84,7 +83,7 @@ function listAllForBoss(bossId) {
 
 function createRequest(userId, body) {
   try {
-    const user = mock.findUserById(userId);
+    const user = data.findUserById(userId);
     if (!user) return { success: false, error: 'Usuario no encontrado' };
 
     const { fecha, hora_inicio, hora_fin, motivo, descripcion, tipos_cubiertos } = body || {};
@@ -106,9 +105,7 @@ function createRequest(userId, body) {
         ? tipos_cubiertos
         : tiposCubiertosPorRango(hora_inicio, hora_fin, user.horario);
 
-    if (!tipos.length) {
-      tipos = ['ENTRADA'];
-    }
+    if (!tipos.length) tipos = ['ENTRADA'];
 
     const now = ahoraGT();
     const record = {
@@ -130,7 +127,7 @@ function createRequest(userId, body) {
       timezone: now.timezone || 'America/Guatemala'
     };
 
-    mock.addPermission(record);
+    data.addPermission(record);
     return { success: true, data: record };
   } catch (err) {
     console.error('[permissionService.createRequest]', err.message);
@@ -140,13 +137,13 @@ function createRequest(userId, body) {
 
 function decide(bossId, permissionId, decision, comentario) {
   try {
-    const perm = mock.findPermissionById(permissionId);
+    const perm = data.findPermissionById(permissionId);
     if (!perm) return { success: false, error: 'Solicitud no encontrada' };
     if (perm.estado !== 'PENDIENTE') {
       return { success: false, error: 'La solicitud ya fue resuelta' };
     }
 
-    const boss = mock.findUserById(bossId);
+    const boss = data.findUserById(bossId);
     if (!boss || !['jefe', 'admin', 'administrador'].includes(boss.rol)) {
       return { success: false, error: 'Solo un jefe puede autorizar' };
     }
@@ -162,10 +159,10 @@ function decide(bossId, permissionId, decision, comentario) {
       perm.aprobado_at = now.fecha_hora;
       perm.comentario_jefe = comentario || '';
 
-      // Registrar hechos de permiso especial (eximen el marcaje)
       for (const tipo of perm.tipos_cubiertos) {
-        const hi = perm.hora_inicio.length === 5 ? perm.hora_inicio + ':00' : perm.hora_inicio;
-        mock.addAttendance({
+        const hi =
+          perm.hora_inicio.length === 5 ? perm.hora_inicio + ':00' : perm.hora_inicio;
+        data.addAttendance({
           id: uuidv4(),
           usuario_id: perm.usuario_id,
           nombre_usuario: perm.nombre_usuario,
@@ -190,7 +187,8 @@ function decide(bossId, permissionId, decision, comentario) {
           incidencias: [
             {
               tipo: 'PERMISO_ESPECIAL',
-              descripcion: perm.motivo_label + (perm.descripcion ? ': ' + perm.descripcion : '')
+              descripcion:
+                perm.motivo_label + (perm.descripcion ? ': ' + perm.descripcion : '')
             }
           ]
         });
@@ -204,6 +202,10 @@ function decide(bossId, permissionId, decision, comentario) {
       return { success: false, error: 'Decisión inválida (APROBAR | RECHAZAR)' };
     }
 
+    if (typeof data.updatePermission === 'function') {
+      data.updatePermission(perm);
+    }
+
     return { success: true, data: perm };
   } catch (err) {
     console.error('[permissionService.decide]', err.message);
@@ -212,7 +214,7 @@ function decide(bossId, permissionId, decision, comentario) {
 }
 
 function getApprovedCoveredTypes(userId, fecha) {
-  return mock.getApprovedPermissionTypes(userId, fecha);
+  return data.getApprovedPermissionTypes(userId, fecha);
 }
 
 module.exports = {
