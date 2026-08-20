@@ -14,6 +14,7 @@ const userRoutes = require('./routes/users');
 const adminRoutes = require('./routes/admin');
 const permissionRoutes = require('./routes/permissions');
 const { ahoraGT, TZ } = require('./utils/time');
+const data = require('./repositories');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -50,6 +51,8 @@ app.get('/health', (req, res) => {
     version: '0.2.0',
     timezone: TZ,
     hora_guatemala: gt.fecha_hora,
+    data_source: data.dataSource || 'mock',
+    data_ready: typeof data.isReady === 'function' ? data.isReady() : true,
     timestamp_utc: new Date().toISOString()
   });
 });
@@ -78,6 +81,7 @@ app.listen(PORT, () => {
   const gt = ahoraGT();
   console.log(`LaboraGT API en puerto ${PORT}`);
   console.log(`Zona horaria: ${TZ} · ${gt.fecha_hora}`);
+  console.log(`Fuente de datos: ${data.dataSource || 'mock'}`);
 });
 
 module.exports = app;
