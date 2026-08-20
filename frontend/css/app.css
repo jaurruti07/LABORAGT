@@ -22,7 +22,7 @@
   color: var(--color-primary);
 }
 
-/* ========== LOGIN HERO ========== */
+/* LOGIN HERO */
 .login-screen {
   max-width: none;
   padding: 0;
@@ -269,34 +269,6 @@
   font-size: 14px;
 }
 
-.result-screen {
-  text-align: center;
-  justify-content: center;
-  gap: var(--space-4);
-}
-
-.result-icon {
-  font-size: 48px;
-  margin-bottom: var(--space-2);
-}
-
-.result-title {
-  font-size: 22px;
-  font-weight: 700;
-}
-
-.result-time {
-  font-size: 28px;
-  font-variant-numeric: tabular-nums;
-  font-weight: 600;
-  color: var(--color-primary);
-}
-
-.result-details {
-  text-align: left;
-  margin-top: var(--space-4);
-}
-
 .error-msg {
   background: #fee2e2;
   color: #b91c1c;
@@ -305,3 +277,265 @@
   font-size: 14px;
   margin-bottom: var(--space-4);
 }
+
+/* ========== FLUJO DE MARCAJE ========== */
+.mark-flow {
+  max-width: 480px;
+  margin: 0 auto;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-bg);
+}
+
+.mark-flow-header {
+  background: linear-gradient(135deg, #0A3559 0%, #0F4C81 55%, #0D9488 140%);
+  color: #fff;
+  padding: 20px 20px 28px;
+  border-radius: 0 0 24px 24px;
+  position: relative;
+  overflow: hidden;
+}
+
+.mark-flow-header::after {
+  content: '';
+  position: absolute;
+  right: -20px;
+  top: -20px;
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.08);
+}
+
+.mark-flow-nav {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  position: relative;
+  z-index: 1;
+}
+
+.mark-flow-nav button {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.15);
+  color: #fff;
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255,255,255,0.2);
+  transition: background 0.2s;
+}
+
+.mark-flow-nav button:hover {
+  background: rgba(255,255,255,0.25);
+}
+
+.mark-flow-nav .title {
+  font-size: 16px;
+  font-weight: 600;
+  opacity: 0.95;
+}
+
+.mark-type-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255,255,255,0.15);
+  border: 1px solid rgba(255,255,255,0.22);
+  backdrop-filter: blur(8px);
+  padding: 10px 16px;
+  border-radius: 14px;
+  font-size: 15px;
+  font-weight: 600;
+  position: relative;
+  z-index: 1;
+}
+
+.mark-type-badge .emoji {
+  font-size: 22px;
+  line-height: 1;
+}
+
+.mark-flow-body {
+  flex: 1;
+  padding: 20px 16px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.mark-steps-card {
+  background: var(--color-surface);
+  border-radius: 16px;
+  border: 1px solid var(--color-border);
+  padding: 8px 12px;
+  box-shadow: var(--shadow-sm);
+}
+
+.mark-step {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 10px;
+  border-bottom: 1px solid var(--color-border);
+  transition: background 0.2s;
+}
+
+.mark-step:last-child { border-bottom: none; }
+
+.mark-step.active {
+  background: linear-gradient(90deg, rgba(15,76,129,0.06), transparent);
+  border-radius: 12px;
+}
+
+.mark-step .step-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 700;
+  flex-shrink: 0;
+  background: var(--color-border);
+  color: var(--color-text-muted);
+  transition: all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.mark-step .step-icon.done {
+  background: var(--color-success);
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(13, 148, 136, 0.35);
+}
+
+.mark-step .step-icon.loading {
+  background: var(--color-info);
+  color: transparent;
+  border: 2px solid transparent;
+  border-top-color: #fff;
+  animation: spin 0.75s linear infinite;
+  font-size: 0;
+}
+
+.mark-step .step-icon.pending {
+  background: #F1F5F9;
+  color: var(--color-text-muted);
+  border: 1.5px dashed var(--color-border);
+}
+
+.mark-step .step-text { flex: 1; min-width: 0; }
+
+.mark-step .step-label {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.mark-step .step-hint {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  margin-top: 2px;
+}
+
+.mark-status {
+  min-height: 24px;
+  font-size: 14px;
+  color: var(--color-text-secondary);
+  text-align: center;
+  padding: 4px 8px;
+}
+
+.mark-status.ok { color: var(--color-success); font-weight: 500; }
+.mark-status.warn { color: var(--color-warning); }
+
+.mark-flow-footer {
+  padding: 8px 16px 28px;
+}
+
+/* Resultado */
+.result-flow {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 20px;
+  text-align: center;
+  max-width: 420px;
+  margin: 0 auto;
+}
+
+.result-circle {
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 42px;
+  margin-bottom: 20px;
+  animation: bounceIn 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+.result-circle.ok {
+  background: linear-gradient(145deg, #ccfbf1, #99f6e4);
+  color: #0f766e;
+  box-shadow: 0 12px 32px rgba(13, 148, 136, 0.25);
+}
+
+.result-circle.warn {
+  background: linear-gradient(145deg, #fef3c7, #fde68a);
+  color: #b45309;
+  box-shadow: 0 12px 32px rgba(217, 119, 6, 0.25);
+}
+
+.result-circle.err {
+  background: linear-gradient(145deg, #fee2e2, #fecaca);
+  color: #b91c1c;
+  box-shadow: 0 12px 32px rgba(220, 38, 38, 0.2);
+}
+
+.result-flow .result-title {
+  font-size: 22px;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.result-flow .result-time {
+  font-size: 36px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-primary);
+  letter-spacing: -0.02em;
+  margin-bottom: 20px;
+}
+
+.result-meta {
+  width: 100%;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
+  padding: 16px 18px;
+  text-align: left;
+  margin-bottom: 24px;
+  box-shadow: var(--shadow-sm);
+}
+
+.result-meta-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 0;
+  font-size: 14px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.result-meta-row:last-child { border-bottom: none; }
+.result-meta-row .k { color: var(--color-text-muted); }
+.result-meta-row .v { font-weight: 600; color: var(--color-text); text-align: right; }
