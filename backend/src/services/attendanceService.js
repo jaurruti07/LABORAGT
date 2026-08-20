@@ -1,11 +1,12 @@
 /**
- * Servicio de marcajes - Motor de reglas
+ * Servicio de marcajes - Motor de reglas (hora America/Guatemala)
  */
 
 const { v4: uuidv4 } = require('uuid');
 const mock = require('../repositories/mockData');
 const { isWithinRadius } = require('../utils/geo');
 const { evaluatePunctuality, nextAllowedType } = require('../utils/schedule');
+const { ahoraGT, fechaGT } = require('../utils/time');
 
 function processCheck({
   userId,
@@ -29,15 +30,11 @@ function processCheck({
       return { success: false, error: 'Tipo de marcaje no permitido. Se espera: ' + esperado };
     }
 
-    const ahora = new Date();
-    const fecha =
-      ahora.getFullYear() +
-      '-' +
-      String(ahora.getMonth() + 1).padStart(2, '0') +
-      '-' +
-      String(ahora.getDate()).padStart(2, '0');
-    const hora = ahora.toTimeString().slice(0, 8);
-    const fechaHora = ahora.toISOString();
+    // Hora de Guatemala (no UTC)
+    const gt = ahoraGT();
+    const fecha = gt.fecha;
+    const hora = gt.hora;
+    const fechaHora = gt.fecha_hora;
 
     const geo = isWithinRadius(
       latitud,
@@ -113,6 +110,7 @@ function processCheck({
       fecha,
       hora,
       fecha_hora: fechaHora,
+      timezone: gt.timezone,
       tipo,
       latitud,
       longitud,
@@ -153,6 +151,7 @@ function processCheck({
         tipo: marcaje.tipo,
         fecha_hora: marcaje.fecha_hora,
         hora: marcaje.hora,
+        timezone: gt.timezone,
         estado: marcaje.estado,
         cumplimiento_horario: marcaje.cumplimiento_horario,
         cumplimiento_geografico: geo.within ? 'DENTRO' : 'FUERA',
@@ -175,6 +174,7 @@ function getTodaySummary(userId) {
     if (!user) return { success: false, error: 'Usuario no encontrado' };
     const marcajes = mock.getTodayAttendance(userId);
     const siguiente = nextAllowedType(marcajes);
+    const gt = ahoraGT();
     return {
       success: true,
       data: {
@@ -194,7 +194,10 @@ function getTodaySummary(userId) {
           estado: m.estado
         })),
         siguiente_marcaje: siguiente,
-        jornada_completa: !siguiente
+        jornada_completa: !siguiente,
+        timezone: gt.timezone,
+        fecha_guatemala: gt.fecha,
+        hora_guatemala: gt.hora
       }
     };
   } catch (err) {
@@ -234,7 +237,7 @@ function getHistory(userId, from, to) {
             entrada && entrada.cumplimiento_horario === 'TARDIO'
               ? entrada.minutos_diferencia || 0
               : 0,
-          jornada_completa: marcajes.some((m) => m.tipo === 'SALIDA')
+          jornada_completa: marcajes.some((m) => m.tipo === 'SALIDA' || m.estado === 'PERMISO_ESPECIAL')
         };
       });
     return { success: true, data: { dias, total_registros: list.length } };
@@ -246,18 +249,9 @@ function getHistory(userId, from, to) {
 
 function getPerformanceStats(userId) {
   try {
-    const now = new Date();
-    const from =
-      now.getFullYear() +
-      '-' +
-      String(now.getMonth() + 1).padStart(2, '0') +
-      '-01';
-    const to =
-      now.getFullYear() +
-      '-' +
-      String(now.getMonth() + 1).padStart(2, '0') +
-      '-' +
-      String(now.getDate()).padStart(2, '0');
+    const today = fechaGT();
+    const from = today.slice(0, 8) + '01';
+    const to = today;
     const list = mock.getAttendanceHistory(userId, from, to);
     const byDate = {};
     for (const m of list) {
@@ -280,7 +274,7 @@ function getPerformanceStats(userId) {
       if (entrada.cumplimiento_horario === 'TARDIO') {
         entradasTarde += 1;
         minutosTardanza += entrada.minutos_diferencia || 0;
-      } else if (entrada.cumplimiento_horario === 'PUNTUAL') {
+      } else if (entrada.cumplimiento_horario === 'PUNTUAL' || entrada.estado === 'PERMISO_ESPECIAL') {
         puntuales += 1;
       }
       const salida = ms.find((m) => m.tipo === 'SALIDA');
@@ -313,10 +307,11 @@ function getPerformanceStats(userId) {
         };
       });
 
+    const [y, mo] = today.split('-').map(Number);
     return {
       success: true,
       data: {
-        periodo: { from, to, mes: now.getMonth() + 1, anio: now.getFullYear() },
+        periodo: { from, to, mes: mo, anio: y },
         kpis: {
           dias_laborados: diasLaborados,
           puntualidad_pct: puntualidadPct,

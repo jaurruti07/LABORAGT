@@ -1,6 +1,5 @@
 /**
  * LaboraGT Backend - Servidor principal
- * Control inteligente y transparente de la jornada laboral
  */
 
 require('dotenv').config();
@@ -13,11 +12,12 @@ const authRoutes = require('./routes/auth');
 const attendanceRoutes = require('./routes/attendance');
 const userRoutes = require('./routes/users');
 const adminRoutes = require('./routes/admin');
+const permissionRoutes = require('./routes/permissions');
+const { ahoraGT, TZ } = require('./utils/time');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Necesario detrás de proxy (Render, nginx, etc.)
 app.set('trust proxy', 1);
 
 app.use(helmet());
@@ -43,11 +43,14 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
 app.get('/health', (req, res) => {
+  const gt = ahoraGT();
   res.json({
     status: 'ok',
     service: 'LaboraGT API',
-    version: '0.1.0',
-    timestamp: new Date().toISOString()
+    version: '0.2.0',
+    timezone: TZ,
+    hora_guatemala: gt.fecha_hora,
+    timestamp_utc: new Date().toISOString()
   });
 });
 
@@ -55,6 +58,7 @@ app.use('/api/v1/auth', authLimiter, authRoutes);
 app.use('/api/v1/attendance', attendanceRoutes);
 app.use('/api/v1/users', userRoutes);
 app.use('/api/v1/admin', adminRoutes);
+app.use('/api/v1/permissions', permissionRoutes);
 
 app.use((req, res) => {
   res.status(404).json({ success: false, error: 'Endpoint no encontrado' });
@@ -71,8 +75,9 @@ app.use((err, req, res, next) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`LaboraGT API escuchando en puerto ${PORT}`);
-  console.log(`Entorno: ${process.env.NODE_ENV || 'development'}`);
+  const gt = ahoraGT();
+  console.log(`LaboraGT API en puerto ${PORT}`);
+  console.log(`Zona horaria: ${TZ} · ${gt.fecha_hora}`);
 });
 
 module.exports = app;
