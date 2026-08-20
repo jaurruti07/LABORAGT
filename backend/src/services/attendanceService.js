@@ -1,6 +1,5 @@
 /**
  * Servicio de marcajes - Motor de reglas
- * Principio: registra hechos; las reglas los interpretan; los permisos justifican.
  */
 
 const { v4: uuidv4 } = require('uuid');
@@ -20,30 +19,23 @@ function processCheck({
 }) {
   try {
     const user = mock.findUserById(userId);
-    if (!user) {
-      return { success: false, error: 'Usuario no encontrado' };
-    }
-
-    if (user.estado !== 'activo') {
-      return { success: false, error: 'Usuario no activo' };
-    }
+    if (!user) return { success: false, error: 'Usuario no encontrado' };
+    if (user.estado !== 'activo') return { success: false, error: 'Usuario no activo' };
 
     const marcajesHoy = mock.getTodayAttendance(userId);
     const esperado = nextAllowedType(marcajesHoy);
-
-    if (!esperado) {
-      return { success: false, error: 'La jornada de hoy ya está completa' };
-    }
-
+    if (!esperado) return { success: false, error: 'La jornada de hoy ya está completa' };
     if (tipo !== esperado) {
-      return {
-        success: false,
-        error: 'Tipo de marcaje no permitido. Se espera: ' + esperado
-      };
+      return { success: false, error: 'Tipo de marcaje no permitido. Se espera: ' + esperado };
     }
 
     const ahora = new Date();
-    const fecha = ahora.toISOString().slice(0, 10);
+    const fecha =
+      ahora.getFullYear() +
+      '-' +
+      String(ahora.getMonth() + 1).padStart(2, '0') +
+      '-' +
+      String(ahora.getDate()).padStart(2, '0');
     const hora = ahora.toTimeString().slice(0, 8);
     const fechaHora = ahora.toISOString();
 
@@ -80,7 +72,6 @@ function processCheck({
     }
 
     const puntualidad = evaluatePunctuality(hora, horaProgramada, tolerancia, tipo);
-
     let estado = 'VALIDO';
     const incidencias = [];
 
@@ -106,7 +97,12 @@ function processCheck({
       incidencias.push({
         tipo: 'FUERA_DE_UBICACION',
         metros: geo.distance,
-        descripcion: 'Ubicación a ' + geo.distance + ' m del punto autorizado (radio: ' + user.ubicacion.radio_metros + ' m)'
+        descripcion:
+          'Ubicación a ' +
+          geo.distance +
+          ' m del punto autorizado (radio: ' +
+          user.ubicacion.radio_metros +
+          ' m)'
       });
     }
 
@@ -144,13 +140,11 @@ function processCheck({
     };
 
     let mensaje = mensajesTipo[tipo] + ' registrada';
-    if (estado === 'VALIDO') {
-      mensaje = '¡' + mensajesTipo[tipo] + ' registrada correctamente!';
-    } else if (estado === 'TARDIO' || estado === 'TARDIO_Y_FUERA_DE_UBICACION') {
+    if (estado === 'VALIDO') mensaje = '¡' + mensajesTipo[tipo] + ' registrada correctamente!';
+    else if (estado === 'TARDIO' || estado === 'TARDIO_Y_FUERA_DE_UBICACION')
       mensaje = mensajesTipo[tipo] + ' registrada con observación';
-    } else if (estado === 'FUERA_DE_UBICACION') {
+    else if (estado === 'FUERA_DE_UBICACION')
       mensaje = mensajesTipo[tipo] + ' registrada (fuera de ubicación)';
-    }
 
     return {
       success: true,
@@ -165,7 +159,7 @@ function processCheck({
         distancia_metros: geo.distance,
         minutos_diferencia: marcaje.minutos_diferencia,
         mensaje,
-        detalle: incidencias.map(i => i.descripcion).join(' · ') || 'Sin observaciones',
+        detalle: incidencias.map((i) => i.descripcion).join(' · ') || 'Sin observaciones',
         incidencias
       }
     };
@@ -178,34 +172,169 @@ function processCheck({
 function getTodaySummary(userId) {
   try {
     const user = mock.findUserById(userId);
-    if (!user) return null;
-
+    if (!user) return { success: false, error: 'Usuario no encontrado' };
     const marcajes = mock.getTodayAttendance(userId);
     const siguiente = nextAllowedType(marcajes);
-
     return {
-      usuario: {
-        nombre: user.nombre,
-        apellidos: user.apellidos,
-        codigo: user.codigo_empleado
-      },
-      horario: user.horario,
-      ubicacion: {
-        nombre: user.ubicacion.nombre,
-        radio_metros: user.ubicacion.radio_metros
-      },
-      marcajes: marcajes.map(m => ({
-        tipo: m.tipo,
-        hora: m.hora,
-        estado: m.estado
-      })),
-      siguiente_marcaje: siguiente,
-      jornada_completa: !siguiente
+      success: true,
+      data: {
+        usuario: {
+          nombre: user.nombre,
+          apellidos: user.apellidos,
+          codigo: user.codigo_empleado
+        },
+        horario: user.horario,
+        ubicacion: {
+          nombre: user.ubicacion.nombre,
+          radio_metros: user.ubicacion.radio_metros
+        },
+        marcajes: marcajes.map((m) => ({
+          tipo: m.tipo,
+          hora: m.hora,
+          estado: m.estado
+        })),
+        siguiente_marcaje: siguiente,
+        jornada_completa: !siguiente
+      }
     };
   } catch (err) {
     console.error('[attendanceService.getTodaySummary]', err.message);
-    return null;
+    return { success: false, error: 'Error al obtener jornada de hoy' };
   }
 }
 
-module.exports = { processCheck, getTodaySummary };
+function getHistory(userId, from, to) {
+  try {
+    const list = mock.getAttendanceHistory(userId, from, to);
+    const byDate = {};
+    for (const m of list) {
+      if (!byDate[m.fecha]) byDate[m.fecha] = [];
+      byDate[m.fecha].push(m);
+    }
+    const dias = Object.keys(byDate)
+      .sort((a, b) => b.localeCompare(a))
+      .map((fecha) => {
+        const marcajes = byDate[fecha].sort((a, b) => a.hora.localeCompare(b.hora));
+        const entrada = marcajes.find((x) => x.tipo === 'ENTRADA');
+        return {
+          fecha,
+          marcajes: marcajes.map((m) => ({
+            id: m.id,
+            tipo: m.tipo,
+            hora: m.hora,
+            estado: m.estado,
+            cumplimiento_horario: m.cumplimiento_horario,
+            minutos_diferencia: m.minutos_diferencia || 0,
+            dentro_ubicacion: m.dentro_ubicacion,
+            distancia_metros: m.distancia_metros
+          })),
+          entrada_estado: entrada ? entrada.estado : null,
+          tarde: entrada ? entrada.cumplimiento_horario === 'TARDIO' : false,
+          minutos_tardanza:
+            entrada && entrada.cumplimiento_horario === 'TARDIO'
+              ? entrada.minutos_diferencia || 0
+              : 0,
+          jornada_completa: marcajes.some((m) => m.tipo === 'SALIDA')
+        };
+      });
+    return { success: true, data: { dias, total_registros: list.length } };
+  } catch (err) {
+    console.error('[attendanceService.getHistory]', err.message);
+    return { success: false, error: 'Error al obtener historial' };
+  }
+}
+
+function getPerformanceStats(userId) {
+  try {
+    const now = new Date();
+    const from =
+      now.getFullYear() +
+      '-' +
+      String(now.getMonth() + 1).padStart(2, '0') +
+      '-01';
+    const to =
+      now.getFullYear() +
+      '-' +
+      String(now.getMonth() + 1).padStart(2, '0') +
+      '-' +
+      String(now.getDate()).padStart(2, '0');
+    const list = mock.getAttendanceHistory(userId, from, to);
+    const byDate = {};
+    for (const m of list) {
+      if (!byDate[m.fecha]) byDate[m.fecha] = [];
+      byDate[m.fecha].push(m);
+    }
+    const fechas = Object.keys(byDate).sort();
+    let diasLaborados = 0;
+    let entradasTarde = 0;
+    let minutosTardanza = 0;
+    let salidasAnticipadas = 0;
+    let jornadasCompletas = 0;
+    let puntuales = 0;
+
+    for (const fecha of fechas) {
+      const ms = byDate[fecha];
+      const entrada = ms.find((m) => m.tipo === 'ENTRADA');
+      if (!entrada) continue;
+      diasLaborados += 1;
+      if (entrada.cumplimiento_horario === 'TARDIO') {
+        entradasTarde += 1;
+        minutosTardanza += entrada.minutos_diferencia || 0;
+      } else if (entrada.cumplimiento_horario === 'PUNTUAL') {
+        puntuales += 1;
+      }
+      const salida = ms.find((m) => m.tipo === 'SALIDA');
+      if (salida) {
+        jornadasCompletas += 1;
+        if (salida.cumplimiento_horario === 'ANTICIPADO') salidasAnticipadas += 1;
+      }
+    }
+
+    const puntualidadPct =
+      diasLaborados > 0 ? Math.round((puntuales / diasLaborados) * 100) : 100;
+
+    const timeline = fechas
+      .slice()
+      .reverse()
+      .slice(0, 12)
+      .map((fecha) => {
+        const ms = byDate[fecha].sort((a, b) => a.hora.localeCompare(b.hora));
+        const entrada = ms.find((m) => m.tipo === 'ENTRADA');
+        return {
+          fecha,
+          entrada_hora: entrada ? entrada.hora.slice(0, 5) : null,
+          estado: entrada ? entrada.estado : null,
+          minutos_tardanza:
+            entrada && entrada.cumplimiento_horario === 'TARDIO'
+              ? entrada.minutos_diferencia || 0
+              : 0,
+          marcajes_count: ms.length,
+          completa: ms.some((m) => m.tipo === 'SALIDA')
+        };
+      });
+
+    return {
+      success: true,
+      data: {
+        periodo: { from, to, mes: now.getMonth() + 1, anio: now.getFullYear() },
+        kpis: {
+          dias_laborados: diasLaborados,
+          puntualidad_pct: puntualidadPct,
+          entradas_tarde: entradasTarde,
+          minutos_tardanza_mes: minutosTardanza,
+          horas_tardanza: Math.round((minutosTardanza / 60) * 10) / 10,
+          salidas_anticipadas: salidasAnticipadas,
+          jornadas_completas: jornadasCompletas,
+          promedio_tardanza_min:
+            entradasTarde > 0 ? Math.round(minutosTardanza / entradasTarde) : 0
+        },
+        timeline
+      }
+    };
+  } catch (err) {
+    console.error('[attendanceService.getPerformanceStats]', err.message);
+    return { success: false, error: 'Error al calcular métricas' };
+  }
+}
+
+module.exports = { processCheck, getTodaySummary, getHistory, getPerformanceStats };
