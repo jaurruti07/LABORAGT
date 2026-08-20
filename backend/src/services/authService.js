@@ -3,7 +3,7 @@
  */
 
 const jwt = require('jsonwebtoken');
-const mock = require('../repositories/mockData');
+const data = require('../repositories');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-me';
 const JWT_EXPIRES = process.env.JWT_EXPIRES_IN || '30m';
@@ -32,7 +32,7 @@ function activateOrLogin({ codigoOrDpi, codigoActivacion }) {
       return { success: false, error: 'Código de empleado o DPI inválido' };
     }
 
-    const user = mock.findUserByCodigoOrDpi(codigoOrDpi.trim());
+    const user = data.findUserByCodigoOrDpi(codigoOrDpi.trim());
 
     if (!user) {
       return { success: false, error: 'Usuario no encontrado' };
