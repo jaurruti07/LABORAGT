@@ -17,27 +17,43 @@ const App = {
   showLogin(errorMsg = '') {
     this.root.innerHTML = `
       <div class="screen login-screen">
-        <div>
-          <div class="login-logo">LaboraGT</div>
-          <p class="login-tagline">Tu jornada, registrada con evidencia.</p>
+        <div class="login-hero">
+          <div class="login-visual" aria-hidden="true">
+            <svg viewBox="0 0 88 88" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <circle cx="44" cy="44" r="40" stroke="rgba(255,255,255,0.25)" stroke-width="2"/>
+              <circle cx="44" cy="44" r="32" fill="rgba(255,255,255,0.12)"/>
+              <path d="M44 22v22l14 8" stroke="#5EEAD4" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+              <circle cx="44" cy="44" r="4" fill="#fff"/>
+              <path d="M28 62c4-6 10-9 16-9s12 3 16 9" stroke="rgba(255,255,255,0.5)" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <div class="login-brand">Labora<span>GT</span></div>
+          <p class="login-tagline">Tu jornada, registrada con evidencia verificable.</p>
+          <div class="login-pills">
+            <span class="login-pill">📍 Ubicación</span>
+            <span class="login-pill">📷 Foto</span>
+            <span class="login-pill">⏱ Horario</span>
+          </div>
         </div>
-        ${errorMsg ? `<div class="error-msg">${errorMsg}</div>` : ''}
-        <form id="login-form">
-          <div class="form-group">
-            <label for="codigo">Código de empleado o DPI</label>
-            <input id="codigo" name="codigo" type="text" required autocomplete="username"
-                   placeholder="EMP-001 o DPI" />
-          </div>
-          <div class="form-group">
-            <label for="activacion">Código de activación</label>
-            <input id="activacion" name="activacion" type="text" required
-                   placeholder="ACT-2026" />
-          </div>
-          <button type="submit" class="btn btn-primary" id="btn-login">Continuar</button>
-        </form>
-        <p style="font-size:13px;color:var(--color-text-muted);margin-top:16px">
-          Demo: EMP-001 / ACT-2026
-        </p>
+        <div class="login-form-panel">
+          <h2>Iniciar sesión</h2>
+          <p class="sub">Ingresa tu código institucional para continuar</p>
+          ${errorMsg ? `<div class="error-msg">${errorMsg}</div>` : ''}
+          <form id="login-form">
+            <div class="form-group">
+              <label for="codigo">Código de empleado o DPI</label>
+              <input id="codigo" name="codigo" type="text" required autocomplete="username"
+                     placeholder="Ej. EMP-001" inputmode="text" />
+            </div>
+            <div class="form-group">
+              <label for="activacion">Código de activación</label>
+              <input id="activacion" name="activacion" type="text" required
+                     placeholder="Código que te asignó RR.HH." autocomplete="one-time-code" />
+            </div>
+            <button type="submit" class="btn btn-primary" id="btn-login">Entrar a mi jornada</button>
+          </form>
+          <p class="login-demo">Demo · <code>EMP-001</code> / <code>ACT-2026</code></p>
+        </div>
       </div>
     `;
 
