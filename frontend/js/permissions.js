@@ -1,5 +1,6 @@
 /**
- * Módulo de permisos especiales (colaborador)
+ * Módulo de permisos especiales (colaborador + jefe)
+ * Motivos: enfermedad, citación juzgado, cita IGSS, otro gubernamental, otro.
  */
 Object.assign(App, {
   async showPermissions() {
@@ -10,7 +11,7 @@ Object.assign(App, {
             <button type="button" onclick="App.showDashboard()" aria-label="Volver">←</button>
             <span class="title">Permisos especiales</span>
           </div>
-          <p class="perf-sub">Enfermedad, citación, IGSS y otros</p>
+          <p class="perf-sub">Enfermedad, citación, IGSS y otros · Hora Guatemala</p>
         </div>
         <div class="perf-body" id="perm-content">
           <div class="loader" role="status"><div class="loader-ring"></div>
@@ -19,11 +20,14 @@ Object.assign(App, {
       </div>`;
 
     try {
-      const [motivosRes, listRes] = await Promise.all([
+      const user = Auth.getUser() || {};
+      const isBoss = user.rol === 'jefe' || user.rol === 'administrador' || user.rol === 'admin';
+      const [motivosRes, listRes, teamRes] = await Promise.all([
         API.getPermissionMotivos(),
-        API.getMyPermissions()
+        API.getMyPermissions(),
+        isBoss ? API.getTeamPermissions().catch(() => ({ data: [] })) : Promise.resolve({ data: [] })
       ]);
-      this.renderPermissions(motivosRes.data, listRes.data || []);
+      this.renderPermissions(motivosRes.data, listRes.data || [], teamRes.data || [], isBoss);
     } catch (err) {
       if (err.status === 401) { Auth.logout(); return; }
       document.getElementById('perm-content').innerHTML =
@@ -31,7 +35,7 @@ Object.assign(App, {
     }
   },
 
-  renderPermissions(motivos, list) {
+  renderPermissions(motivos, list, teamList, isBoss) {
     const motivoOpts = Object.entries(motivos || {})
       .map(([k, v]) => `<option value="${k}">${v}</option>`)
       .join('');
@@ -41,11 +45,7 @@ Object.assign(App, {
     const items = list.length
       ? list.map((p) => {
           const badge =
-            p.estado === 'APROBADO'
-              ? 'ok'
-              : p.estado === 'RECHAZADO'
-              ? 'late'
-              : 'partial';
+            p.estado === 'APROBADO' ? 'ok' : p.estado === 'RECHAZADO' ? 'late' : 'partial';
           return `
             <div class="tl-item">
               <div class="tl-dot ${badge}"></div>
@@ -55,7 +55,7 @@ Object.assign(App, {
                   <span class="tl-badge ${badge}">${p.estado}</span>
                 </div>
                 <div class="tl-meta">
-                  ${p.motivo_label}<br>
+                  ${p.motivo_label || p.motivo}<br>
                   ${p.hora_inicio} – ${p.hora_fin}
                   · Cubre: ${(p.tipos_cubiertos || []).join(', ') || '—'}
                   ${p.comentario_jefe ? '<br>Jefe: ' + p.comentario_jefe : ''}
@@ -64,6 +64,42 @@ Object.assign(App, {
             </div>`;
         }).join('')
       : '<p class="empty-hint">Aún no has solicitado permisos.</p>';
+
+    const pending = (teamList || []).filter((p) => p.estado === 'PENDIENTE');
+    const teamHtml = isBoss
+      ? (pending.length
+          ? pending
+              .map((p) => {
+                const col = p.colaborador
+                  ? `${p.colaborador.nombre} ${p.colaborador.apellidos}`
+                  : p.nombre_usuario || 'Colaborador';
+                const cod = p.colaborador ? p.colaborador.codigo : '';
+                return `
+            <div class="tl-item" data-perm-id="${p.id}">
+              <div class="tl-dot partial"></div>
+              <div class="tl-content">
+                <div class="tl-top">
+                  <span class="tl-date">${col}</span>
+                  <span class="tl-badge partial">PENDIENTE</span>
+                </div>
+                <div class="tl-meta">
+                  ${cod ? cod + ' · ' : ''}${p.motivo_label || p.motivo}<br>
+                  ${p.fecha} · ${p.hora_inicio} – ${p.hora_fin}<br>
+                  Cubre: ${(p.tipos_cubiertos || []).join(', ') || '—'}
+                  ${p.descripcion || p.justificacion ? '<br>' + (p.descripcion || p.justificacion) : ''}
+                </div>
+                <div style="display:flex;gap:8px;margin-top:10px">
+                  <button type="button" class="btn btn-primary" style="width:auto;min-height:36px;padding:6px 14px;font-size:13px"
+                    data-decide="APROBAR" data-id="${p.id}">Autorizar</button>
+                  <button type="button" class="btn btn-secondary" style="width:auto;min-height:36px;padding:6px 14px;font-size:13px"
+                    data-decide="RECHAZAR" data-id="${p.id}">Rechazar</button>
+                </div>
+              </div>
+            </div>`;
+              })
+              .join('')
+          : '<p class="empty-hint">No hay solicitudes pendientes del equipo.</p>')
+      : '';
 
     document.getElementById('perm-content').innerHTML = `
       <section class="perf-section">
@@ -89,17 +125,27 @@ Object.assign(App, {
               <select id="perm-motivo" required>${motivoOpts}</select>
             </div>
             <div class="form-group">
-              <label for="perm-desc">Detalle (opcional)</label>
-              <input id="perm-desc" type="text" placeholder="Ej. Cita IGSS 9:30 a.m." />
+              <label for="perm-desc">Detalle / justificación</label>
+              <input id="perm-desc" type="text" required minlength="5"
+                placeholder="Ej. Cita IGSS 9:30 a.m. / Citación juzgado" />
             </div>
             <p style="font-size:12px;color:var(--color-text-muted);margin-bottom:12px">
-              Al autorizarse, el sistema registrará permiso especial y no exigirá el marcaje en ese rango.
+              Al autorizarse, el sistema registrará permiso especial y no exigirá el marcaje en ese rango (hora Guatemala).
             </p>
             <button type="submit" class="btn btn-primary" id="btn-perm">Enviar solicitud</button>
           </form>
           <div id="perm-msg" style="margin-top:12px"></div>
         </div>
       </section>
+
+      ${
+        isBoss
+          ? `<section class="perf-section">
+        <h3 class="perf-section-title">Pendientes de mi equipo</h3>
+        <div class="timeline">${teamHtml}</div>
+      </section>`
+          : ''
+      }
 
       <section class="perf-section">
         <h3 class="perf-section-title">Mis solicitudes</h3>
@@ -120,13 +166,35 @@ Object.assign(App, {
           motivo: document.getElementById('perm-motivo').value,
           descripcion: document.getElementById('perm-desc').value.trim()
         });
-        msg.innerHTML = '<p class="mark-status ok">Solicitud enviada. Pendiente de autorización del jefe.</p>';
+        msg.innerHTML =
+          '<p class="mark-status ok">Solicitud enviada. Pendiente de autorización del jefe.</p>';
         this.showPermissions();
       } catch (err) {
         msg.innerHTML = `<div class="error-msg">${err.message}</div>`;
         btn.disabled = false;
         btn.classList.remove('is-loading');
       }
+    });
+
+    document.querySelectorAll('[data-decide]').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const id = btn.getAttribute('data-id');
+        const decision = btn.getAttribute('data-decide');
+        let comentario = '';
+        if (decision === 'RECHAZAR') {
+          comentario = prompt('Motivo del rechazo (opcional):') || '';
+        }
+        btn.disabled = true;
+        btn.classList.add('is-loading');
+        try {
+          await API.decidePermission(id, decision, comentario);
+          this.showPermissions();
+        } catch (err) {
+          alert(err.message);
+          btn.disabled = false;
+          btn.classList.remove('is-loading');
+        }
+      });
     });
   }
 });
