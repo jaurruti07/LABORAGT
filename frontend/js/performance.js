@@ -27,6 +27,70 @@ Object.assign(App, {
     }
   },
 
+  buildTardinessBarChart(timeline) {
+    const days = (timeline || []).slice().reverse();
+    if (!days.length) {
+      return '<p class="empty-hint">Sin datos para el gráfico.</p>';
+    }
+
+    const values = days.map((d) => d.minutos_tardanza || 0);
+    const maxVal = Math.max(15, ...values);
+    const W = 320;
+    const H = 160;
+    const padL = 28;
+    const padR = 8;
+    const padT = 16;
+    const padB = 36;
+    const chartW = W - padL - padR;
+    const chartH = H - padT - padB;
+    const n = days.length;
+    const gap = 4;
+    const barW = Math.max(6, (chartW - gap * (n - 1)) / n);
+
+    const bars = days.map((day, i) => {
+      const v = day.minutos_tardanza || 0;
+      const h = v <= 0 ? 4 : Math.max(6, (v / maxVal) * chartH);
+      const x = padL + i * (barW + gap);
+      const y = padT + chartH - h;
+      const color = v > 0 ? '#D97706' : '#0D9488';
+      const d = new Date(day.fecha + 'T12:00:00');
+      const label = String(d.getDate());
+      const title = day.fecha + (v > 0 ? ' · +' + v + ' min' : ' · puntual');
+      return `
+        <g class="bar-group">
+          <title>${title}</title>
+          <rect class="bar" x="${x}" y="${y}" width="${barW}" height="${h}"
+                rx="3" ry="3" fill="${color}" opacity="0.92"/>
+          <text class="bar-label" x="${x + barW / 2}" y="${H - 12}"
+                text-anchor="middle" font-size="9" fill="#64748B">${label}</text>
+        </g>`;
+    }).join('');
+
+    const ticks = [0, 0.5, 1].map((t) => {
+      const val = Math.round(maxVal * t);
+      const y = padT + chartH - t * chartH;
+      return `
+        <line x1="${padL}" y1="${y}" x2="${W - padR}" y2="${y}"
+              stroke="#E2E8F0" stroke-width="1"/>
+        <text x="${padL - 4}" y="${y + 3}" text-anchor="end"
+              font-size="9" fill="#94A3B8">${val}</text>`;
+    }).join('');
+
+    return `
+      <div class="chart-card">
+        <div class="chart-legend">
+          <span class="leg"><i class="leg-dot ok"></i> Puntual</span>
+          <span class="leg"><i class="leg-dot late"></i> Minutos de tardanza</span>
+        </div>
+        <svg class="bar-chart" viewBox="0 0 ${W} ${H}" role="img"
+             aria-label="Minutos de tardanza por día">
+          ${ticks}
+          ${bars}
+        </svg>
+        <p class="chart-caption">Eje Y: minutos de tardanza · Eje X: día del mes</p>
+      </div>`;
+  },
+
   renderPerformance(stats, history) {
     const k = stats.kpis;
     const periodo = stats.periodo;
@@ -46,6 +110,8 @@ Object.assign(App, {
         <div class="kpi-label">${c.label}</div>
         <div class="kpi-hint">${c.hint}</div>
       </div>`).join('');
+
+    const chartHtml = this.buildTardinessBarChart(stats.timeline || []);
 
     const timeline = (stats.timeline || []).map((day) => {
       const d = new Date(day.fecha + 'T12:00:00');
@@ -94,10 +160,17 @@ Object.assign(App, {
     document.getElementById('perf-content').innerHTML = `
       <p class="perf-period">Período: <strong>${mesLabel}</strong></p>
       <div class="kpi-grid">${kpiCards}</div>
+
+      <section class="perf-section">
+        <h3 class="perf-section-title">Tardanza por día</h3>
+        ${chartHtml}
+      </section>
+
       <section class="perf-section">
         <h3 class="perf-section-title">Entradas tarde</h3>
         <div class="late-grid">${lateCards}</div>
       </section>
+
       <section class="perf-section">
         <h3 class="perf-section-title">Línea de tiempo</h3>
         <div class="timeline">${timeline}</div>

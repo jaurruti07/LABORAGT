@@ -168,3 +168,58 @@
   color: var(--color-text-muted);
   padding: 8px 0;
 }
+
+.chart-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  padding: 12px 10px 8px;
+  box-shadow: var(--shadow-sm);
+}
+
+.chart-legend {
+  display: flex;
+  gap: 14px;
+  margin-bottom: 8px;
+  padding: 0 4px;
+}
+
+.leg {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--color-text-muted);
+}
+
+.leg-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  display: inline-block;
+}
+
+.leg-dot.ok { background: #0D9488; }
+.leg-dot.late { background: #D97706; }
+
+.bar-chart {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.bar-group .bar {
+  transition: opacity 0.2s ease;
+}
+
+.bar-group:hover .bar {
+  opacity: 1;
+  filter: brightness(1.08);
+}
+
+.chart-caption {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  text-align: center;
+  margin: 4px 0 0;
+}
