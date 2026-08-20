@@ -2,6 +2,8 @@
  * Datos de prueba (Mock) para desarrollo del MVP
  */
 
+const { fechaGT } = require('../utils/time');
+
 const users = [
   {
     id: 'usr-001',
@@ -74,23 +76,21 @@ const users = [
 ];
 
 const attendanceStore = [];
+const permissionStore = [];
 
 function seedDemoHistory() {
   if (attendanceStore.length > 0) return;
   const userId = 'usr-001';
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = now.getMonth();
-  const startDay = Math.max(1, now.getDate() - 17);
+  const todayStr = fechaGT();
+  const [y, m, d] = todayStr.split('-').map(Number);
+  const startDay = Math.max(1, d - 17);
   let seq = 0;
-  for (let d = startDay; d <= now.getDate(); d++) {
-    const date = new Date(year, month, d);
-    const wd = date.getDay();
+  for (let day = startDay; day <= d; day++) {
+    const date = new Date(Date.UTC(y, m - 1, day, 12, 0, 0));
+    const wd = date.getUTCDay();
     if (wd === 0 || wd === 6) continue;
-    const y = date.getFullYear();
-    const mth = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    const fecha = y + '-' + mth + '-' + day;
+    const fecha =
+      y + '-' + String(m).padStart(2, '0') + '-' + String(day).padStart(2, '0');
     const late = seq % 3 === 2;
     const entradaMin = late ? 8 * 60 + 12 + (seq % 5) * 3 : 7 * 60 + 52 + (seq % 4);
     const h = (mins) => {
@@ -116,12 +116,6 @@ function seedDemoHistory() {
         estado: seq % 5 === 0 ? 'ANTICIPADO' : 'VALIDO'
       }
     ];
-    const todayStr =
-      now.getFullYear() +
-      '-' +
-      String(now.getMonth() + 1).padStart(2, '0') +
-      '-' +
-      String(now.getDate()).padStart(2, '0');
     const isToday = fecha === todayStr;
     const maxT = isToday ? 0 : tipos.length;
     for (let i = 0; i < maxT; i++) {
@@ -132,7 +126,7 @@ function seedDemoHistory() {
         nombre_usuario: 'Josué Pérez López',
         fecha,
         hora: t.hora,
-        fecha_hora: fecha + 'T' + t.hora + '.000Z',
+        fecha_hora: fecha + 'T' + t.hora + '-06:00',
         tipo: t.tipo,
         latitud: 14.6349,
         longitud: -90.5069,
@@ -146,7 +140,7 @@ function seedDemoHistory() {
         fotografia_presente: true,
         transaction_id: 'TXN-SEED-' + fecha + '-' + i,
         sincronizado_posteriormente: false,
-        created_at: fecha + 'T' + t.hora + '.000Z',
+        created_at: fecha + 'T' + t.hora + '-06:00',
         incidencias:
           t.estado === 'TARDIO'
             ? [{ tipo: 'ENTRADA_TARDIA', minutos: t.minDiff, descripcion: 'Tardanza de ' + t.minDiff + ' min' }]
@@ -162,6 +156,7 @@ seedDemoHistory();
 module.exports = {
   users,
   attendanceStore,
+  permissionStore,
   findUserByCodigoOrDpi(codigoOrDpi) {
     return users.find(
       (u) => u.codigo_empleado === codigoOrDpi || u.dpi === codigoOrDpi
@@ -171,13 +166,7 @@ module.exports = {
     return users.find((u) => u.id === id);
   },
   getTodayAttendance(userId) {
-    const today = new Date();
-    const fecha =
-      today.getFullYear() +
-      '-' +
-      String(today.getMonth() + 1).padStart(2, '0') +
-      '-' +
-      String(today.getDate()).padStart(2, '0');
+    const fecha = fechaGT();
     return attendanceStore.filter((m) => m.usuario_id === userId && m.fecha === fecha);
   },
   addAttendance(record) {
@@ -191,5 +180,27 @@ module.exports = {
       if (to && m.fecha > to) return false;
       return true;
     });
+  },
+  addPermission(record) {
+    permissionStore.push(record);
+    return record;
+  },
+  findPermissionById(id) {
+    return permissionStore.find((p) => p.id === id);
+  },
+  getPermissionsByUser(userId) {
+    return permissionStore.filter((p) => p.usuario_id === userId);
+  },
+  getApprovedPermissionTypes(userId, fecha) {
+    const set = new Set();
+    permissionStore
+      .filter(
+        (p) =>
+          p.usuario_id === userId &&
+          p.fecha === fecha &&
+          p.estado === 'APROBADO'
+      )
+      .forEach((p) => (p.tipos_cubiertos || []).forEach((t) => set.add(t)));
+    return [...set];
   }
 };
