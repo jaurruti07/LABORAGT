@@ -1,0 +1,258 @@
+/* ========== LaboraGT — Animaciones avanzadas ========== */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeInDown {
+  from { opacity: 0; transform: translateY(-16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.88); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes slideUpSheet {
+  from { opacity: 0; transform: translateY(40px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pulseSoft {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.04); opacity: 0.92; }
+}
+
+@keyframes pulseRing {
+  0% { box-shadow: 0 0 0 0 rgba(15, 76, 129, 0.45); }
+  70% { box-shadow: 0 0 0 14px rgba(15, 76, 129, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(15, 76, 129, 0); }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+@keyframes glowPulse {
+  0%, 100% { filter: drop-shadow(0 0 6px rgba(94, 234, 212, 0.4)); }
+  50% { filter: drop-shadow(0 0 16px rgba(94, 234, 212, 0.75)); }
+}
+
+@keyframes bounceIn {
+  0% { opacity: 0; transform: scale(0.3); }
+  50% { transform: scale(1.08); }
+  70% { transform: scale(0.95); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(24px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes heroGradientShift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-6px); }
+  40% { transform: translateX(6px); }
+  60% { transform: translateX(-4px); }
+  80% { transform: translateX(4px); }
+}
+
+.anim-fade-in { animation: fadeIn 0.45s ease both; }
+.anim-fade-up { animation: fadeInUp 0.5s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.anim-fade-down { animation: fadeInDown 0.45s ease both; }
+.anim-scale-in { animation: scaleIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+.anim-bounce-in { animation: bounceIn 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+.anim-slide-right { animation: slideInRight 0.45s ease both; }
+
+.anim-delay-1 { animation-delay: 0.08s; }
+.anim-delay-2 { animation-delay: 0.16s; }
+.anim-delay-3 { animation-delay: 0.24s; }
+.anim-delay-4 { animation-delay: 0.32s; }
+.anim-delay-5 { animation-delay: 0.4s; }
+
+.login-hero {
+  background-size: 200% 200%;
+  animation: heroGradientShift 12s ease infinite;
+}
+
+.login-visual {
+  animation: float 3.5s ease-in-out infinite, glowPulse 3s ease-in-out infinite;
+}
+
+.login-visual svg {
+  animation: scaleIn 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+.login-brand { animation: fadeInUp 0.55s ease 0.12s both; }
+.login-tagline { animation: fadeInUp 0.55s ease 0.2s both; }
+.login-pills { animation: fadeInUp 0.55s ease 0.28s both; }
+
+.login-pill {
+  transition: transform 0.2s ease, background 0.2s ease;
+}
+
+.login-pill:hover {
+  transform: translateY(-2px);
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.login-form-panel {
+  animation: slideUpSheet 0.55s cubic-bezier(0.22, 1, 0.36, 1) 0.15s both;
+}
+
+.login-form-panel .form-group input {
+  transition: border-color 0.2s, box-shadow 0.25s cubic-bezier(0.22, 1, 0.36, 1), transform 0.15s;
+}
+
+.login-form-panel .form-group input:focus {
+  transform: translateY(-1px);
+}
+
+.btn-primary {
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.2s ease, box-shadow 0.25s ease, background 0.25s;
+}
+
+.btn-primary::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    105deg,
+    transparent 40%,
+    rgba(255, 255, 255, 0.25) 50%,
+    transparent 60%
+  );
+  background-size: 200% 100%;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.btn-primary:hover::after {
+  opacity: 1;
+  animation: shimmer 1.2s ease;
+}
+
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(15, 76, 129, 0.4);
+}
+
+.btn-primary:active {
+  transform: translateY(0) scale(0.98);
+}
+
+.btn-primary:disabled {
+  transform: none;
+  animation: none;
+}
+
+.btn-mark-pulse {
+  animation: pulseRing 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.card {
+  transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.25s ease;
+}
+
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08);
+}
+
+.card-enter {
+  animation: fadeInUp 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.progress-step {
+  transition: color 0.3s ease, transform 0.2s ease;
+}
+
+.progress-step.done {
+  animation: scaleIn 0.35s ease both;
+}
+
+.progress-step.current {
+  animation: pulseSoft 1.8s ease-in-out infinite;
+}
+
+.checklist .icon {
+  transition: background 0.3s ease, transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.checklist .icon.done {
+  animation: bounceIn 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+.checklist .icon.loading {
+  animation: spin 0.8s linear infinite;
+  border: 2px solid transparent;
+  border-top-color: #fff;
+  background: var(--color-info) !important;
+  color: transparent !important;
+  font-size: 0 !important;
+}
+
+.result-icon {
+  animation: bounceIn 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+.result-title { animation: fadeInUp 0.45s ease 0.15s both; }
+.result-time { animation: fadeInUp 0.45s ease 0.22s both; }
+.result-details { animation: fadeInUp 0.45s ease 0.3s both; }
+
+.skeleton {
+  background: linear-gradient(90deg, #E2E8F0 25%, #F1F5F9 50%, #E2E8F0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s ease infinite;
+  border-radius: 8px;
+  color: transparent !important;
+}
+
+.screen-enter {
+  animation: fadeIn 0.35s ease both;
+}
+
+.badge {
+  transition: transform 0.2s ease;
+}
+
+.badge:hover {
+  transform: scale(1.05);
+}
+
+.error-msg {
+  animation: shake 0.4s ease, fadeIn 0.3s ease both;
+}
