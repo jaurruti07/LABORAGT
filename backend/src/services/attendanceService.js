@@ -2,8 +2,9 @@
  * Servicio de marcajes - Motor de reglas (hora America/Guatemala)
  */
 
-const { v4: uuidv4 } = require('uuid');
-const mock = require('../repositories/mockData');
+const crypto = require('crypto');
+const uuidv4 = () => crypto.randomUUID();
+const data = require('../repositories');
 const { isWithinRadius } = require('../utils/geo');
 const { evaluatePunctuality, nextAllowedType } = require('../utils/schedule');
 const { ahoraGT, fechaGT } = require('../utils/time');
@@ -19,18 +20,17 @@ function processCheck({
   client_timestamp
 }) {
   try {
-    const user = mock.findUserById(userId);
+    const user = data.findUserById(userId);
     if (!user) return { success: false, error: 'Usuario no encontrado' };
     if (user.estado !== 'activo') return { success: false, error: 'Usuario no activo' };
 
-    const marcajesHoy = mock.getTodayAttendance(userId);
+    const marcajesHoy = data.getTodayAttendance(userId);
     const esperado = nextAllowedType(marcajesHoy);
     if (!esperado) return { success: false, error: 'La jornada de hoy ya está completa' };
     if (tipo !== esperado) {
       return { success: false, error: 'Tipo de marcaje no permitido. Se espera: ' + esperado };
     }
 
-    // Hora de Guatemala (no UTC)
     const gt = ahoraGT();
     const fecha = gt.fecha;
     const hora = gt.hora;
@@ -128,7 +128,7 @@ function processCheck({
       incidencias
     };
 
-    mock.addAttendance(marcaje);
+    data.addAttendance(marcaje);
 
     const mensajesTipo = {
       ENTRADA: 'Entrada',
@@ -170,9 +170,9 @@ function processCheck({
 
 function getTodaySummary(userId) {
   try {
-    const user = mock.findUserById(userId);
+    const user = data.findUserById(userId);
     if (!user) return { success: false, error: 'Usuario no encontrado' };
-    const marcajes = mock.getTodayAttendance(userId);
+    const marcajes = data.getTodayAttendance(userId);
     const siguiente = nextAllowedType(marcajes);
     const gt = ahoraGT();
     return {
@@ -208,7 +208,7 @@ function getTodaySummary(userId) {
 
 function getHistory(userId, from, to) {
   try {
-    const list = mock.getAttendanceHistory(userId, from, to);
+    const list = data.getAttendanceHistory(userId, from, to);
     const byDate = {};
     for (const m of list) {
       if (!byDate[m.fecha]) byDate[m.fecha] = [];
@@ -237,7 +237,9 @@ function getHistory(userId, from, to) {
             entrada && entrada.cumplimiento_horario === 'TARDIO'
               ? entrada.minutos_diferencia || 0
               : 0,
-          jornada_completa: marcajes.some((m) => m.tipo === 'SALIDA' || m.estado === 'PERMISO_ESPECIAL')
+          jornada_completa: marcajes.some(
+            (m) => m.tipo === 'SALIDA' || m.estado === 'PERMISO_ESPECIAL'
+          )
         };
       });
     return { success: true, data: { dias, total_registros: list.length } };
@@ -252,7 +254,7 @@ function getPerformanceStats(userId) {
     const today = fechaGT();
     const from = today.slice(0, 8) + '01';
     const to = today;
-    const list = mock.getAttendanceHistory(userId, from, to);
+    const list = data.getAttendanceHistory(userId, from, to);
     const byDate = {};
     for (const m of list) {
       if (!byDate[m.fecha]) byDate[m.fecha] = [];
@@ -274,7 +276,10 @@ function getPerformanceStats(userId) {
       if (entrada.cumplimiento_horario === 'TARDIO') {
         entradasTarde += 1;
         minutosTardanza += entrada.minutos_diferencia || 0;
-      } else if (entrada.cumplimiento_horario === 'PUNTUAL' || entrada.estado === 'PERMISO_ESPECIAL') {
+      } else if (
+        entrada.cumplimiento_horario === 'PUNTUAL' ||
+        entrada.estado === 'PERMISO_ESPECIAL'
+      ) {
         puntuales += 1;
       }
       const salida = ms.find((m) => m.tipo === 'SALIDA');
