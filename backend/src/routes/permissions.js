@@ -35,7 +35,7 @@ router.post('/', (req, res) => {
 });
 
 /** Listado para jefe */
-router.get('/team', requireRole('jefe', 'admin'), (req, res) => {
+router.get('/team', requireRole('jefe', 'admin', 'administrador'), (req, res) => {
   try {
     const result = permissionService.listAllForBoss(req.user.id);
     if (!result.success) return res.status(500).json(result);
@@ -46,7 +46,7 @@ router.get('/team', requireRole('jefe', 'admin'), (req, res) => {
   }
 });
 
-router.get('/pending', requireRole('jefe', 'admin'), (req, res) => {
+router.get('/pending', requireRole('jefe', 'admin', 'administrador'), (req, res) => {
   try {
     const result = permissionService.listPendingForBoss(req.user.id);
     if (!result.success) return res.status(500).json(result);
@@ -58,7 +58,7 @@ router.get('/pending', requireRole('jefe', 'admin'), (req, res) => {
 });
 
 /** Aprobar / rechazar */
-router.post('/:id/decide', requireRole('jefe', 'admin'), (req, res) => {
+router.post('/:id/decide', requireRole('jefe', 'admin', 'administrador'), (req, res) => {
   try {
     const { decision, comentario } = req.body || {};
     const result = permissionService.decide(req.user.id, req.params.id, decision, comentario);
