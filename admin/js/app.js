@@ -5,6 +5,12 @@
 const AdminApp = {
   root: null,
   currentPage: 'dashboard',
+  usersCache: [],
+
+  canWriteUsers() {
+    const u = API.getUser() || {};
+    return ['jefe', 'admin', 'administrador'].includes(u.rol);
+  },
 
   init() {
     this.root = document.getElementById('app');
@@ -81,7 +87,8 @@ const AdminApp = {
           </div>
           <div class="content" id="page-content"><p>Cargando…</p></div>
         </div>
-      </div>`;
+      </div>
+      <div id="modal-root"></div>`;
 
     document.getElementById('topbar-date').textContent =
       new Date().toLocaleDateString('es-GT', {
@@ -148,33 +155,306 @@ const AdminApp = {
     }
   },
 
+  /* ---------- USUARIOS CRUD ---------- */
+
   async loadUsers() {
     const el = document.getElementById('page-content');
     el.innerHTML = '<p>Cargando usuarios…</p>';
     try {
       const res = await API.getUsers();
-      const list = res.data || [];
-      el.innerHTML = `
-        <div class="card">
-          <div class="card-header">Colaboradores (${list.length})</div>
-          <div class="table-wrap">
-            <table>
-              <thead><tr><th>Código</th><th>Nombre</th><th>Cargo</th><th>Rol</th><th>Estado</th></tr></thead>
-              <tbody>${list.map(u => `
-                <tr>
-                  <td>${u.codigo_empleado}</td>
-                  <td>${u.nombre} ${u.apellidos}</td>
-                  <td>${u.cargo || '—'}</td>
-                  <td><span class="badge badge-info">${u.rol}</span></td>
-                  <td><span class="badge badge-success">${u.estado}</span></td>
-                </tr>`).join('')}
-              </tbody>
-            </table>
-          </div>
-        </div>`;
+      this.usersCache = res.data || [];
+      this.renderUsersTable(this.usersCache);
     } catch (err) {
       el.innerHTML = `<div class="error-box">${err.message}</div>`;
     }
+  },
+
+  renderUsersTable(list) {
+    const el = document.getElementById('page-content');
+    const canWrite = this.canWriteUsers();
+    const q = (document.getElementById('user-search') || {}).value || '';
+    const filtered = q
+      ? list.filter((u) => {
+          const s = (u.codigo_empleado + ' ' + u.nombre + ' ' + u.apellidos + ' ' + (u.cargo || '')).toLowerCase();
+          return s.includes(q.toLowerCase());
+        })
+      : list;
+
+    el.innerHTML = `
+      <div class="toolbar">
+        <input type="search" id="user-search" placeholder="Buscar por código, nombre…" value="${q.replace(/"/g, '')}" />
+        ${canWrite ? '<button type="button" class="btn btn-primary" style="width:auto" id="btn-new-user">+ Nuevo usuario</button>' : ''}
+      </div>
+      <div class="card">
+        <div class="card-header">Colaboradores (${filtered.length})</div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Código</th><th>Nombre</th><th>Cargo</th><th>Rol</th><th>Estado</th>
+                ${canWrite ? '<th>Acciones</th>' : ''}
+              </tr>
+            </thead>
+            <tbody>
+              ${filtered.length ? filtered.map((u) => `
+                <tr data-id="${u.id}">
+                  <td><code>${u.codigo_empleado}</code></td>
+                  <td>${u.nombre} ${u.apellidos}</td>
+                  <td>${u.cargo || '—'}</td>
+                  <td><span class="badge badge-info">${u.rol}</span></td>
+                  <td>${this.badgeEstadoUsuario(u.estado)}</td>
+                  ${canWrite ? `<td class="actions-cell">
+                    <button type="button" class="btn-link" data-edit="${u.id}">Editar</button>
+                    ${u.estado === 'activo'
+                      ? `<button type="button" class="btn-link danger" data-deactivate="${u.id}">Desactivar</button>`
+                      : `<button type="button" class="btn-link" data-activate="${u.id}">Activar</button>`}
+                  </td>` : ''}
+                </tr>`).join('') : '<tr><td colspan="6" class="empty">Sin usuarios</td></tr>'}
+            </tbody>
+          </table>
+        </div>
+      </div>`;
+
+    const search = document.getElementById('user-search');
+    if (search) {
+      search.addEventListener('input', () => this.renderUsersTable(this.usersCache));
+      search.focus();
+      const len = search.value.length;
+      search.setSelectionRange(len, len);
+    }
+
+    const btnNew = document.getElementById('btn-new-user');
+    if (btnNew) btnNew.addEventListener('click', () => this.openUserModal(null));
+
+    el.querySelectorAll('[data-edit]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const u = this.usersCache.find((x) => x.id === btn.dataset.edit);
+        this.openUserModal(u || null);
+      });
+    });
+    el.querySelectorAll('[data-deactivate]').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        if (!confirm('¿Desactivar este usuario? No podrá marcar jornada.')) return;
+        try {
+          await API.deactivateUser(btn.dataset.deactivate);
+          this.loadUsers();
+        } catch (err) {
+          alert(err.message);
+        }
+      });
+    });
+    el.querySelectorAll('[data-activate]').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        try {
+          await API.updateUser(btn.dataset.activate, { estado: 'activo' });
+          this.loadUsers();
+        } catch (err) {
+          alert(err.message);
+        }
+      });
+    });
+  },
+
+  badgeEstadoUsuario(estado) {
+    const map = {
+      activo: 'badge-success',
+      inactivo: 'badge-neutral',
+      suspendido: 'badge-danger'
+    };
+    return `<span class="badge ${map[estado] || 'badge-neutral'}">${estado || '—'}</span>`;
+  },
+
+  openUserModal(user) {
+    const isEdit = !!user;
+    const jefes = this.usersCache.filter(
+      (u) => ['jefe', 'admin', 'administrador'].includes(u.rol) && (!user || u.id !== user.id)
+    );
+    const h = user?.horario || {};
+    const ubi = user?.ubicacion || {};
+
+    const root = document.getElementById('modal-root');
+    root.innerHTML = `
+      <div class="modal-backdrop" id="modal-backdrop">
+        <div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+          <div class="modal-header">
+            <h3 id="modal-title">${isEdit ? 'Editar usuario' : 'Nuevo usuario'}</h3>
+            <button type="button" class="modal-close" id="modal-close" aria-label="Cerrar">×</button>
+          </div>
+          <form id="user-form" class="modal-body">
+            <div class="form-grid">
+              <div class="form-group">
+                <label for="f-codigo">Código empleado *</label>
+                <input id="f-codigo" required value="${user?.codigo_empleado || ''}" ${isEdit ? 'readonly' : ''} />
+              </div>
+              <div class="form-group">
+                <label for="f-dpi">DPI</label>
+                <input id="f-dpi" value="${user?.dpi || ''}" />
+              </div>
+              <div class="form-group">
+                <label for="f-nombre">Nombre *</label>
+                <input id="f-nombre" required value="${user?.nombre || ''}" />
+              </div>
+              <div class="form-group">
+                <label for="f-apellidos">Apellidos *</label>
+                <input id="f-apellidos" required value="${user?.apellidos || ''}" />
+              </div>
+              <div class="form-group">
+                <label for="f-correo">Correo</label>
+                <input id="f-correo" type="email" value="${user?.correo || ''}" />
+              </div>
+              <div class="form-group">
+                <label for="f-telefono">Teléfono</label>
+                <input id="f-telefono" value="${user?.telefono || ''}" />
+              </div>
+              <div class="form-group">
+                <label for="f-dependencia">Dependencia</label>
+                <input id="f-dependencia" value="${user?.dependencia || ''}" />
+              </div>
+              <div class="form-group">
+                <label for="f-unidad">Unidad</label>
+                <input id="f-unidad" value="${user?.unidad || ''}" />
+              </div>
+              <div class="form-group">
+                <label for="f-cargo">Cargo</label>
+                <input id="f-cargo" value="${user?.cargo || ''}" />
+              </div>
+              <div class="form-group">
+                <label for="f-rol">Rol *</label>
+                <select id="f-rol" required>
+                  ${['colaborador', 'jefe', 'administrador', 'auditor'].map(
+                    (r) => `<option value="${r}" ${(user?.rol || 'colaborador') === r ? 'selected' : ''}>${r}</option>`
+                  ).join('')}
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="f-estado">Estado</label>
+                <select id="f-estado">
+                  ${['activo', 'inactivo', 'suspendido'].map(
+                    (s) => `<option value="${s}" ${(user?.estado || 'activo') === s ? 'selected' : ''}>${s}</option>`
+                  ).join('')}
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="f-jefe">Jefe inmediato</label>
+                <select id="f-jefe">
+                  <option value="">— Ninguno —</option>
+                  ${jefes.map(
+                    (j) => `<option value="${j.id}" ${user?.jefe_inmediato_id === j.id ? 'selected' : ''}>
+                      ${j.nombre} ${j.apellidos} (${j.codigo_empleado})</option>`
+                  ).join('')}
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="f-activacion">Código activación ${isEdit ? '' : '*'}</label>
+                <input id="f-activacion" ${isEdit ? '' : 'required'} value="${user?.codigo_activacion || ''}"
+                  placeholder="${isEdit ? 'Dejar vacío para no cambiar' : 'Ej. ACT-2026'}" />
+              </div>
+            </div>
+
+            <h4 class="form-section-title">Horario</h4>
+            <div class="form-grid form-grid-4">
+              <div class="form-group">
+                <label for="f-he">Entrada</label>
+                <input id="f-he" type="time" value="${(h.hora_entrada || '08:00').slice(0, 5)}" />
+              </div>
+              <div class="form-group">
+                <label for="f-hs">Salida</label>
+                <input id="f-hs" type="time" value="${(h.hora_salida || '17:00').slice(0, 5)}" />
+              </div>
+              <div class="form-group">
+                <label for="f-ia">Inicio almuerzo</label>
+                <input id="f-ia" type="time" value="${(h.inicio_almuerzo || '12:00').slice(0, 5)}" />
+              </div>
+              <div class="form-group">
+                <label for="f-fa">Fin almuerzo</label>
+                <input id="f-fa" type="time" value="${(h.fin_almuerzo || '13:00').slice(0, 5)}" />
+              </div>
+            </div>
+
+            <h4 class="form-section-title">Ubicación autorizada</h4>
+            <div class="form-grid">
+              <div class="form-group">
+                <label for="f-ubi-nombre">Nombre sede</label>
+                <input id="f-ubi-nombre" value="${ubi.nombre || 'Sede Central'}" />
+              </div>
+              <div class="form-group">
+                <label for="f-radio">Radio (m)</label>
+                <input id="f-radio" type="number" min="10" value="${ubi.radio_metros ?? 100}" />
+              </div>
+              <div class="form-group">
+                <label for="f-lat">Latitud</label>
+                <input id="f-lat" type="number" step="any" value="${ubi.latitud ?? 14.6349}" />
+              </div>
+              <div class="form-group">
+                <label for="f-lng">Longitud</label>
+                <input id="f-lng" type="number" step="any" value="${ubi.longitud ?? -90.5069}" />
+              </div>
+            </div>
+
+            <div id="form-msg"></div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" id="modal-cancel">Cancelar</button>
+              <button type="submit" class="btn btn-primary" style="width:auto" id="btn-save-user">
+                ${isEdit ? 'Guardar cambios' : 'Crear usuario'}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>`;
+
+    const close = () => { root.innerHTML = ''; };
+    document.getElementById('modal-close').addEventListener('click', close);
+    document.getElementById('modal-cancel').addEventListener('click', close);
+    document.getElementById('modal-backdrop').addEventListener('click', (e) => {
+      if (e.target.id === 'modal-backdrop') close();
+    });
+
+    document.getElementById('user-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById('btn-save-user');
+      const msg = document.getElementById('form-msg');
+      btn.disabled = true;
+      btn.textContent = 'Guardando…';
+
+      const payload = {
+        codigo_empleado: document.getElementById('f-codigo').value.trim(),
+        dpi: document.getElementById('f-dpi').value.trim(),
+        nombre: document.getElementById('f-nombre').value.trim(),
+        apellidos: document.getElementById('f-apellidos').value.trim(),
+        correo: document.getElementById('f-correo').value.trim(),
+        telefono: document.getElementById('f-telefono').value.trim(),
+        dependencia: document.getElementById('f-dependencia').value.trim(),
+        unidad: document.getElementById('f-unidad').value.trim(),
+        cargo: document.getElementById('f-cargo').value.trim(),
+        rol: document.getElementById('f-rol').value,
+        estado: document.getElementById('f-estado').value,
+        jefe_inmediato_id: document.getElementById('f-jefe').value || null,
+        codigo_activacion: document.getElementById('f-activacion').value.trim(),
+        hora_entrada: document.getElementById('f-he').value,
+        hora_salida: document.getElementById('f-hs').value,
+        inicio_almuerzo: document.getElementById('f-ia').value,
+        fin_almuerzo: document.getElementById('f-fa').value,
+        ubicacion_nombre: document.getElementById('f-ubi-nombre').value.trim(),
+        radio_metros: Number(document.getElementById('f-radio').value),
+        latitud: Number(document.getElementById('f-lat').value),
+        longitud: Number(document.getElementById('f-lng').value)
+      };
+
+      try {
+        if (isEdit) {
+          if (!payload.codigo_activacion) delete payload.codigo_activacion;
+          await API.updateUser(user.id, payload);
+        } else {
+          await API.createUser(payload);
+        }
+        close();
+        this.loadUsers();
+      } catch (err) {
+        msg.innerHTML = `<div class="error-box">${err.message}</div>`;
+        btn.disabled = false;
+        btn.textContent = isEdit ? 'Guardar cambios' : 'Crear usuario';
+      }
+    });
   },
 
   async loadAttendance() {
@@ -312,7 +592,9 @@ const AdminApp = {
       PENDIENTE: 'badge-warning',
       RECHAZADO: 'badge-danger',
       PERMISO_ESPECIAL: 'badge-info',
-      FUERA_DE_UBICACION: 'badge-danger'
+      FUERA_DE_UBICACION: 'badge-danger',
+      activo: 'badge-success',
+      inactivo: 'badge-neutral'
     };
     return `<span class="badge ${map[estado] || 'badge-neutral'}">${estado || '—'}</span>`;
   }
