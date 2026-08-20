@@ -1,15 +1,18 @@
 /**
  * Permisos especiales: enfermedad, citación, IGSS, etc.
  * Flujo: colaborador solicita → jefe autoriza → se exime el marcaje cubierto.
+ * Zona: America/Guatemala
  */
 
-const { v4: uuidv4 } = require('uuid');
+const crypto = require('crypto');
+const uuidv4 = () => crypto.randomUUID();
 const mock = require('../repositories/mockData');
 const { ahoraGT, tiposCubiertosPorRango } = require('../utils/time');
 
 const MOTIVOS = {
   ENFERMEDAD: 'Permiso por enfermedad',
-  CITACION_JUDICIAL: 'Citación de juzgado u ente gubernamental',
+  CITACION_JUDICIAL: 'Citación de juzgado u órgano judicial',
+  CITACION_GUBERNAMENTAL: 'Citación de otra entidad gubernamental',
   IGSS: 'Cita en seguro social (IGSS)',
   OTRO: 'Otro permiso justificado'
 };
@@ -104,7 +107,6 @@ function createRequest(userId, body) {
         : tiposCubiertosPorRango(hora_inicio, hora_fin, user.horario);
 
     if (!tipos.length) {
-      // Si no se detectó cobertura, al menos ENTRADA si el rango toca la mañana
       tipos = ['ENTRADA'];
     }
 
@@ -125,7 +127,7 @@ function createRequest(userId, body) {
       aprobado_at: null,
       comentario_jefe: null,
       created_at: now.fecha_hora,
-      timezone: now.timezone
+      timezone: now.timezone || 'America/Guatemala'
     };
 
     mock.addPermission(record);
@@ -145,12 +147,16 @@ function decide(bossId, permissionId, decision, comentario) {
     }
 
     const boss = mock.findUserById(bossId);
-    if (!boss || !['jefe', 'admin'].includes(boss.rol)) {
+    if (!boss || !['jefe', 'admin', 'administrador'].includes(boss.rol)) {
       return { success: false, error: 'Solo un jefe puede autorizar' };
     }
 
     const now = ahoraGT();
-    if (decision === 'APROBAR') {
+    const dec = String(decision || '').toUpperCase();
+    const isApprove = dec === 'APROBAR' || dec === 'APROBADO';
+    const isReject = dec === 'RECHAZAR' || dec === 'RECHAZADO';
+
+    if (isApprove) {
       perm.estado = 'APROBADO';
       perm.aprobado_por = bossId;
       perm.aprobado_at = now.fecha_hora;
@@ -158,13 +164,14 @@ function decide(bossId, permissionId, decision, comentario) {
 
       // Registrar hechos de permiso especial (eximen el marcaje)
       for (const tipo of perm.tipos_cubiertos) {
+        const hi = perm.hora_inicio.length === 5 ? perm.hora_inicio + ':00' : perm.hora_inicio;
         mock.addAttendance({
           id: uuidv4(),
           usuario_id: perm.usuario_id,
           nombre_usuario: perm.nombre_usuario,
           fecha: perm.fecha,
-          hora: perm.hora_inicio.length === 5 ? perm.hora_inicio + ':00' : perm.hora_inicio,
-          fecha_hora: perm.fecha + 'T' + (perm.hora_inicio.length === 5 ? perm.hora_inicio + ':00' : perm.hora_inicio) + '-06:00',
+          hora: hi,
+          fecha_hora: perm.fecha + 'T' + hi + '-06:00',
           tipo,
           latitud: null,
           longitud: null,
@@ -188,7 +195,7 @@ function decide(bossId, permissionId, decision, comentario) {
           ]
         });
       }
-    } else if (decision === 'RECHAZAR') {
+    } else if (isReject) {
       perm.estado = 'RECHAZADO';
       perm.aprobado_por = bossId;
       perm.aprobado_at = now.fecha_hora;
