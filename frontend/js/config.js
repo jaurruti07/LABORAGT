@@ -1,3 +1,8 @@
+/**
+ * Configuración de la PWA LaboraGT
+ * API por defecto: Render production
+ * Override: ?api=https://otro-host.com
+ */
 const CONFIG = {
   API_BASE: (function () {
     try {
@@ -9,7 +14,7 @@ const CONFIG = {
       const stored = localStorage.getItem('laboragt_api');
       if (stored) return stored.replace(/\/$/, '') + '/api/v1';
     } catch (e) {}
-    return 'http://localhost:3000/api/v1';
+    return 'https://laboragt-api.onrender.com/api/v1';
   })(),
   STORAGE_KEY: 'laboragt_token',
   USER_KEY: 'laboragt_user'

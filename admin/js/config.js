@@ -1,3 +1,6 @@
+/**
+ * Config panel admin — API por defecto en Render
+ */
 const CONFIG = {
   API_BASE: (function () {
     try {
@@ -9,7 +12,7 @@ const CONFIG = {
       const stored = localStorage.getItem('laboragt_admin_api');
       if (stored) return stored.replace(/\/$/, '') + '/api/v1';
     } catch (e) {}
-    return 'http://localhost:3000/api/v1';
+    return 'https://laboragt-api.onrender.com/api/v1';
   })(),
   STORAGE_KEY: 'laboragt_admin_token',
   USER_KEY: 'laboragt_admin_user'
