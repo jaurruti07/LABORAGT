@@ -1,6 +1,7 @@
 /**
  * Rutas de administración
  * Acceso: jefe, admin, administrador, auditor
+ * Escritura de usuarios: jefe, admin, administrador (no auditor)
  */
 
 const express = require('express');
@@ -8,8 +9,10 @@ const router = express.Router();
 const { authenticate, requireRole } = require('../middleware/auth');
 const data = require('../repositories');
 const { fechaGT } = require('../utils/time');
+const userAdmin = require('../services/userAdminService');
 
 const ROLES_ADMIN = ['jefe', 'admin', 'administrador', 'auditor'];
+const ROLES_WRITE = ['jefe', 'admin', 'administrador'];
 
 router.use(authenticate);
 
@@ -71,30 +74,70 @@ router.get('/dashboard', requireRole(...ROLES_ADMIN), (req, res) => {
   }
 });
 
+/* ---------- USUARIOS CRUD ---------- */
+
 router.get('/users', requireRole(...ROLES_ADMIN), (req, res) => {
   try {
-    const list = data.users.map((u) => ({
-      id: u.id,
-      codigo_empleado: u.codigo_empleado,
-      nombre: u.nombre,
-      apellidos: u.apellidos,
-      correo: u.correo,
-      dependencia: u.dependencia,
-      unidad: u.unidad,
-      cargo: u.cargo,
-      rol: u.rol,
-      estado: u.estado,
-      horario: u.horario && (u.horario.nombre || u.horario.hora_entrada)
-    }));
-    return res.json({ success: true, data: list });
+    const result = userAdmin.listUsers();
+    if (!result.success) return res.status(500).json(result);
+    return res.json(result);
   } catch (err) {
     console.error('[admin/users]', err.message);
-    return res.status(500).json({
-      success: false,
-      error: 'Error al listar usuarios'
-    });
+    return res.status(500).json({ success: false, error: 'Error al listar usuarios' });
   }
 });
+
+router.get('/users/:id', requireRole(...ROLES_ADMIN), (req, res) => {
+  try {
+    const result = userAdmin.getUser(req.params.id);
+    if (!result.success) return res.status(404).json(result);
+    return res.json(result);
+  } catch (err) {
+    console.error('[admin/users/:id]', err.message);
+    return res.status(500).json({ success: false, error: 'Error al obtener usuario' });
+  }
+});
+
+router.post('/users', requireRole(...ROLES_WRITE), (req, res) => {
+  try {
+    const result = userAdmin.createUser(req.body);
+    if (!result.success) return res.status(400).json(result);
+    return res.status(201).json(result);
+  } catch (err) {
+    console.error('[admin/users POST]', err.message);
+    return res.status(500).json({ success: false, error: 'Error al crear usuario' });
+  }
+});
+
+router.put('/users/:id', requireRole(...ROLES_WRITE), (req, res) => {
+  try {
+    const result = userAdmin.updateUser(req.params.id, req.body);
+    if (!result.success) {
+      const code = result.error === 'Usuario no encontrado' ? 404 : 400;
+      return res.status(code).json(result);
+    }
+    return res.json(result);
+  } catch (err) {
+    console.error('[admin/users PUT]', err.message);
+    return res.status(500).json({ success: false, error: 'Error al actualizar usuario' });
+  }
+});
+
+router.delete('/users/:id', requireRole(...ROLES_WRITE), (req, res) => {
+  try {
+    const result = userAdmin.deactivateUser(req.params.id);
+    if (!result.success) {
+      const code = result.error === 'Usuario no encontrado' ? 404 : 400;
+      return res.status(code).json(result);
+    }
+    return res.json(result);
+  } catch (err) {
+    console.error('[admin/users DELETE]', err.message);
+    return res.status(500).json({ success: false, error: 'Error al desactivar usuario' });
+  }
+});
+
+/* ---------- MARCAJES / INCIDENCIAS ---------- */
 
 router.get('/attendance', requireRole(...ROLES_ADMIN), (req, res) => {
   try {
