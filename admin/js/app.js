@@ -32,8 +32,7 @@ const AdminApp = {
           </form>
           <p style="margin-top:16px;font-size:12px;color:#94a3b8">Demo jefe: EMP-002 / ACT-2026</p>
         </div>
-      </div>
-    `;
+      </div>`;
 
     document.getElementById('login-form').addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -67,6 +66,7 @@ const AdminApp = {
             <a href="#" data-page="users">Usuarios</a>
             <a href="#" data-page="attendance">Marcajes</a>
             <a href="#" data-page="incidents">Incidencias</a>
+            <a href="#" data-page="permissions">Permisos</a>
           </nav>
           <div class="sidebar-footer">
             ${user.nombre || ''} ${user.apellidos || ''}<br>
@@ -81,11 +81,13 @@ const AdminApp = {
           </div>
           <div class="content" id="page-content"><p>Cargando…</p></div>
         </div>
-      </div>
-    `;
+      </div>`;
 
     document.getElementById('topbar-date').textContent =
-      new Date().toLocaleDateString('es-GT', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+      new Date().toLocaleDateString('es-GT', {
+        timeZone: 'America/Guatemala',
+        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+      }) + ' · America/Guatemala';
 
     document.querySelectorAll('.sidebar nav a').forEach(a => {
       a.addEventListener('click', (e) => {
@@ -107,12 +109,19 @@ const AdminApp = {
 
   navigate(page) {
     this.currentPage = page;
-    const titles = { dashboard: 'Dashboard', users: 'Usuarios', attendance: 'Marcajes', incidents: 'Incidencias' };
+    const titles = {
+      dashboard: 'Dashboard',
+      users: 'Usuarios',
+      attendance: 'Marcajes',
+      incidents: 'Incidencias',
+      permissions: 'Permisos especiales'
+    };
     document.getElementById('page-title').textContent = titles[page] || page;
     if (page === 'dashboard') this.loadDashboard();
     else if (page === 'users') this.loadUsers();
     else if (page === 'attendance') this.loadAttendance();
     else if (page === 'incidents') this.loadIncidents();
+    else if (page === 'permissions') this.loadPermissions();
   },
 
   async loadDashboard() {
@@ -129,19 +138,6 @@ const AdminApp = {
           <div class="kpi-card"><div class="label">Fuera de ubicación</div><div class="value danger">${d.fuera_ubicacion}</div></div>
           <div class="kpi-card"><div class="label">Cumplimiento</div><div class="value success">${d.cumplimiento_pct}%</div></div>
           <div class="kpi-card"><div class="label">Incidencias</div><div class="value">${d.incidencias_pendientes}</div></div>
-        </div>
-        <div class="card">
-          <div class="card-header">Últimas incidencias del día</div>
-          <div class="table-wrap">
-            ${d.ultimas_incidencias.length === 0
-              ? '<div class="empty">Sin incidencias registradas hoy</div>'
-              : `<table><thead><tr><th>Hora</th><th>Colaborador</th><th>Tipo</th><th>Estado</th><th>Detalle</th></tr></thead>
-                <tbody>${d.ultimas_incidencias.map(i => `
-                  <tr><td>${i.hora}</td><td>${i.usuario}</td><td>${i.tipo}</td>
-                  <td>${this.badgeEstado(i.estado)}</td>
-                  <td style="font-size:13px;color:#64748b">${i.detalle || '—'}</td></tr>`).join('')}
-                </tbody></table>`}
-          </div>
         </div>`;
     } catch (err) {
       if (err.status === 401 || err.status === 403) { API.clearAuth(); this.showLogin(err.message); return; }
@@ -160,17 +156,14 @@ const AdminApp = {
           <div class="card-header">Colaboradores (${list.length})</div>
           <div class="table-wrap">
             <table>
-              <thead><tr><th>Código</th><th>Nombre</th><th>Dependencia</th><th>Cargo</th><th>Rol</th><th>Estado</th></tr></thead>
+              <thead><tr><th>Código</th><th>Nombre</th><th>Cargo</th><th>Rol</th><th>Estado</th></tr></thead>
               <tbody>${list.map(u => `
                 <tr>
                   <td>${u.codigo_empleado}</td>
                   <td>${u.nombre} ${u.apellidos}</td>
-                  <td>${u.dependencia || '—'}</td>
                   <td>${u.cargo || '—'}</td>
                   <td><span class="badge badge-info">${u.rol}</span></td>
-                  <td>${u.estado === 'activo'
-                    ? '<span class="badge badge-success">Activo</span>'
-                    : '<span class="badge badge-neutral">' + u.estado + '</span>'}</td>
+                  <td><span class="badge badge-success">${u.estado}</span></td>
                 </tr>`).join('')}
               </tbody>
             </table>
@@ -183,52 +176,30 @@ const AdminApp = {
 
   async loadAttendance() {
     const el = document.getElementById('page-content');
-    const today = new Date().toISOString().slice(0, 10);
+    const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Guatemala' });
     el.innerHTML = `
       <div class="filters">
         <input type="date" id="filter-fecha" value="${today}" />
-        <select id="filter-estado">
-          <option value="">Todos los estados</option>
-          <option value="VALIDO">Válido</option>
-          <option value="TARDIO">Tardío</option>
-          <option value="FUERA_DE_UBICACION">Fuera de ubicación</option>
-          <option value="TARDIO_Y_FUERA_DE_UBICACION">Tardío + Fuera</option>
-        </select>
         <button class="btn btn-primary" style="width:auto" id="btn-filtrar">Filtrar</button>
       </div>
       <div id="attendance-table"><p>Cargando…</p></div>`;
-
     const load = async () => {
-      const fecha = document.getElementById('filter-fecha').value;
-      const estado = document.getElementById('filter-estado').value;
-      const params = {};
-      if (fecha) params.fecha = fecha;
-      if (estado) params.estado = estado;
       try {
-        const res = await API.getAttendance(params);
+        const res = await API.getAttendance({ fecha: document.getElementById('filter-fecha').value });
         const list = res.data || [];
         const container = document.getElementById('attendance-table');
-        if (list.length === 0) {
-          container.innerHTML = '<div class="card"><div class="empty">No hay marcajes para los filtros seleccionados</div></div>';
+        if (!list.length) {
+          container.innerHTML = '<div class="card"><div class="empty">Sin marcajes</div></div>';
           return;
         }
         container.innerHTML = `
-          <div class="card">
-            <div class="card-header">Marcajes (${list.length})</div>
-            <div class="table-wrap">
-              <table>
-                <thead><tr><th>Fecha</th><th>Hora</th><th>Colaborador</th><th>Tipo</th><th>Estado</th><th>Distancia</th><th>Horario</th></tr></thead>
-                <tbody>${list.map(m => `
-                  <tr>
-                    <td>${m.fecha}</td><td>${m.hora}</td><td>${m.nombre_usuario}</td><td>${m.tipo}</td>
-                    <td>${this.badgeEstado(m.estado)}</td>
-                    <td>${m.distancia_metros != null ? m.distancia_metros + ' m' : '—'}</td>
-                    <td>${m.cumplimiento_horario || '—'}</td>
-                  </tr>`).join('')}
-                </tbody>
-              </table>
-            </div>
-          </div>`;
+          <div class="card"><div class="card-header">Marcajes (${list.length})</div>
+          <div class="table-wrap"><table>
+            <thead><tr><th>Hora</th><th>Colaborador</th><th>Tipo</th><th>Estado</th></tr></thead>
+            <tbody>${list.map(m => `<tr>
+              <td>${m.hora}</td><td>${m.nombre_usuario}</td><td>${m.tipo}</td>
+              <td>${this.badgeEstado(m.estado)}</td></tr>`).join('')}
+            </tbody></table></div></div>`;
       } catch (err) {
         document.getElementById('attendance-table').innerHTML = `<div class="error-box">${err.message}</div>`;
       }
@@ -239,30 +210,92 @@ const AdminApp = {
 
   async loadIncidents() {
     const el = document.getElementById('page-content');
-    el.innerHTML = '<p>Cargando incidencias…</p>';
+    el.innerHTML = '<p>Cargando…</p>';
     try {
       const res = await API.getIncidents();
       const list = res.data || [];
-      if (list.length === 0) {
-        el.innerHTML = '<div class="card"><div class="empty">No hay incidencias registradas</div></div>';
+      el.innerHTML = list.length
+        ? `<div class="card"><div class="card-header">Incidencias</div>
+           <div class="table-wrap"><table><thead><tr><th>Fecha</th><th>Usuario</th><th>Estado</th></tr></thead>
+           <tbody>${list.map(i => `<tr><td>${i.fecha}</td><td>${i.usuario}</td><td>${this.badgeEstado(i.estado)}</td></tr>`).join('')}
+           </tbody></table></div></div>`
+        : '<div class="card"><div class="empty">Sin incidencias</div></div>';
+    } catch (err) {
+      el.innerHTML = `<div class="error-box">${err.message}</div>`;
+    }
+  },
+
+  async loadPermissions() {
+    const el = document.getElementById('page-content');
+    el.innerHTML = '<p>Cargando solicitudes…</p>';
+    try {
+      const res = await API.getTeamPermissions();
+      const list = res.data || [];
+      if (!list.length) {
+        el.innerHTML = '<div class="card"><div class="empty">No hay solicitudes de permiso</div></div>';
         return;
       }
       el.innerHTML = `
         <div class="card">
-          <div class="card-header">Incidencias (${list.length})</div>
+          <div class="card-header">Solicitudes de permiso (${list.length})</div>
           <div class="table-wrap">
             <table>
-              <thead><tr><th>Fecha</th><th>Hora</th><th>Colaborador</th><th>Tipo</th><th>Estado</th><th>Detalle</th></tr></thead>
-              <tbody>${list.map(i => `
+              <thead>
                 <tr>
-                  <td>${i.fecha}</td><td>${i.hora}</td><td>${i.usuario}</td><td>${i.tipo_marcaje}</td>
-                  <td>${this.badgeEstado(i.estado)}</td>
-                  <td style="font-size:13px;color:#64748b">${(i.incidencias || []).map(x => x.descripcion).join(' · ') || '—'}</td>
-                </tr>`).join('')}
+                  <th>Fecha</th><th>Colaborador</th><th>Motivo</th>
+                  <th>Horario</th><th>Cubre</th><th>Estado</th><th>Acción</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${list.map(p => {
+                  const col = p.colaborador
+                    ? p.colaborador.nombre + ' ' + p.colaborador.apellidos
+                    : p.nombre_usuario;
+                  const actions =
+                    p.estado === 'PENDIENTE'
+                      ? `<button class="btn btn-primary" style="width:auto;min-height:32px;padding:6px 10px;font-size:12px" data-approve="${p.id}">Aprobar</button>
+                         <button class="btn btn-secondary" style="width:auto;min-height:32px;padding:6px 10px;font-size:12px;margin-left:4px" data-reject="${p.id}">Rechazar</button>`
+                      : '—';
+                  return `<tr>
+                    <td>${p.fecha}</td>
+                    <td>${col}</td>
+                    <td>${p.motivo_label || p.motivo}</td>
+                    <td>${p.hora_inicio}–${p.hora_fin}</td>
+                    <td style="font-size:12px">${(p.tipos_cubiertos || []).join(', ')}</td>
+                    <td>${this.badgeEstado(p.estado)}</td>
+                    <td>${actions}</td>
+                  </tr>`;
+                }).join('')}
               </tbody>
             </table>
           </div>
         </div>`;
+
+      el.querySelectorAll('[data-approve]').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          btn.disabled = true;
+          try {
+            await API.decidePermission(btn.dataset.approve, 'APROBAR', 'Autorizado');
+            this.loadPermissions();
+          } catch (err) {
+            alert(err.message);
+            btn.disabled = false;
+          }
+        });
+      });
+      el.querySelectorAll('[data-reject]').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const c = prompt('Motivo del rechazo (opcional):') || 'Rechazado';
+          btn.disabled = true;
+          try {
+            await API.decidePermission(btn.dataset.reject, 'RECHAZAR', c);
+            this.loadPermissions();
+          } catch (err) {
+            alert(err.message);
+            btn.disabled = false;
+          }
+        });
+      });
     } catch (err) {
       el.innerHTML = `<div class="error-box">${err.message}</div>`;
     }
@@ -270,8 +303,13 @@ const AdminApp = {
 
   badgeEstado(estado) {
     const map = {
-      VALIDO: 'badge-success', TARDIO: 'badge-warning', SALIDA_ANTICIPADA: 'badge-warning',
-      FUERA_DE_UBICACION: 'badge-danger', TARDIO_Y_FUERA_DE_UBICACION: 'badge-danger', JUSTIFICADO: 'badge-info'
+      VALIDO: 'badge-success',
+      TARDIO: 'badge-warning',
+      APROBADO: 'badge-success',
+      PENDIENTE: 'badge-warning',
+      RECHAZADO: 'badge-danger',
+      PERMISO_ESPECIAL: 'badge-info',
+      FUERA_DE_UBICACION: 'badge-danger'
     };
     return `<span class="badge ${map[estado] || 'badge-neutral'}">${estado || '—'}</span>`;
   }
