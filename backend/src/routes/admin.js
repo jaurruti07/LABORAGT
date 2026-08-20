@@ -1,53 +1,64 @@
 /**
  * Rutas de administración
- * Acceso: jefe, admin, auditor
+ * Acceso: jefe, admin, administrador, auditor
  */
 
 const express = require('express');
 const router = express.Router();
 const { authenticate, requireRole } = require('../middleware/auth');
-const mock = require('../repositories/mockData');
+const data = require('../repositories');
+const { fechaGT } = require('../utils/time');
+
+const ROLES_ADMIN = ['jefe', 'admin', 'administrador', 'auditor'];
 
 router.use(authenticate);
 
-router.get('/dashboard', requireRole('jefe', 'admin', 'auditor'), (req, res) => {
+router.get('/dashboard', requireRole(...ROLES_ADMIN), (req, res) => {
   try {
-    const today = new Date().toISOString().slice(0, 10);
-    const allToday = mock.attendanceStore.filter(m => m.fecha === today);
+    const today = fechaGT();
+    const allToday = data.attendanceStore.filter((m) => m.fecha === today);
 
-    const tardias = allToday.filter(m =>
-      m.estado === 'TARDIO' || m.estado === 'TARDIO_Y_FUERA_DE_UBICACION'
+    const tardias = allToday.filter(
+      (m) => m.estado === 'TARDIO' || m.estado === 'TARDIO_Y_FUERA_DE_UBICACION'
     ).length;
 
-    const fueraUbicacion = allToday.filter(m =>
-      m.estado === 'FUERA_DE_UBICACION' || m.estado === 'TARDIO_Y_FUERA_DE_UBICACION'
+    const fueraUbicacion = allToday.filter(
+      (m) =>
+        m.estado === 'FUERA_DE_UBICACION' || m.estado === 'TARDIO_Y_FUERA_DE_UBICACION'
     ).length;
 
-    const usuariosActivos = mock.users.filter(u => u.estado === 'activo').length;
+    const usuariosActivos = data.users.filter((u) => u.estado === 'activo').length;
+    const permisosPendientes = (data.permissionStore || []).filter(
+      (p) => p.estado === 'PENDIENTE'
+    ).length;
 
     return res.json({
       success: true,
       data: {
         fecha: today,
+        timezone: 'America/Guatemala',
+        data_source: data.dataSource || 'mock',
         colaboradores_activos: usuariosActivos,
         marcajes_hoy: allToday.length,
         entradas_tardias: tardias,
         fuera_ubicacion: fueraUbicacion,
-        permisos_activos: 0,
+        permisos_activos: permisosPendientes,
         incidencias_pendientes: tardias + fueraUbicacion,
         cumplimiento_pct: allToday.length
-          ? Math.round(((allToday.length - tardias - fueraUbicacion) / allToday.length) * 100)
+          ? Math.round(
+              ((allToday.length - tardias - fueraUbicacion) / allToday.length) * 100
+            )
           : 100,
         ultimas_incidencias: allToday
-          .filter(m => m.estado !== 'VALIDO')
+          .filter((m) => m.estado !== 'VALIDO' && m.estado !== 'PERMISO_ESPECIAL')
           .slice(-10)
           .reverse()
-          .map(m => ({
+          .map((m) => ({
             hora: m.hora,
             usuario: m.nombre_usuario,
             tipo: m.tipo,
             estado: m.estado,
-            detalle: (m.incidencias || []).map(i => i.descripcion).join(' · ')
+            detalle: (m.incidencias || []).map((i) => i.descripcion).join(' · ')
           }))
       }
     });
@@ -60,9 +71,9 @@ router.get('/dashboard', requireRole('jefe', 'admin', 'auditor'), (req, res) => 
   }
 });
 
-router.get('/users', requireRole('jefe', 'admin', 'auditor'), (req, res) => {
+router.get('/users', requireRole(...ROLES_ADMIN), (req, res) => {
   try {
-    const list = mock.users.map(u => ({
+    const list = data.users.map((u) => ({
       id: u.id,
       codigo_empleado: u.codigo_empleado,
       nombre: u.nombre,
@@ -85,17 +96,18 @@ router.get('/users', requireRole('jefe', 'admin', 'auditor'), (req, res) => {
   }
 });
 
-router.get('/attendance', requireRole('jefe', 'admin', 'auditor'), (req, res) => {
+router.get('/attendance', requireRole(...ROLES_ADMIN), (req, res) => {
   try {
-    let list = mock.attendanceStore.slice();
-    if (req.query.fecha) list = list.filter(m => m.fecha === req.query.fecha);
-    if (req.query.usuario_id) list = list.filter(m => m.usuario_id === req.query.usuario_id);
-    if (req.query.estado) list = list.filter(m => m.estado === req.query.estado);
+    let list = data.attendanceStore.slice();
+    if (req.query.fecha) list = list.filter((m) => m.fecha === req.query.fecha);
+    if (req.query.usuario_id)
+      list = list.filter((m) => m.usuario_id === req.query.usuario_id);
+    if (req.query.estado) list = list.filter((m) => m.estado === req.query.estado);
     list.sort((a, b) => (b.fecha_hora || '').localeCompare(a.fecha_hora || ''));
 
     return res.json({
       success: true,
-      data: list.map(m => ({
+      data: list.map((m) => ({
         id: m.id,
         fecha: m.fecha,
         hora: m.hora,
@@ -119,12 +131,12 @@ router.get('/attendance', requireRole('jefe', 'admin', 'auditor'), (req, res) =>
   }
 });
 
-router.get('/incidents', requireRole('jefe', 'admin', 'auditor'), (req, res) => {
+router.get('/incidents', requireRole(...ROLES_ADMIN), (req, res) => {
   try {
-    const incidents = mock.attendanceStore
-      .filter(m => m.estado && m.estado !== 'VALIDO')
+    const incidents = data.attendanceStore
+      .filter((m) => m.estado && m.estado !== 'VALIDO' && m.estado !== 'PERMISO_ESPECIAL')
       .sort((a, b) => (b.fecha_hora || '').localeCompare(a.fecha_hora || ''))
-      .map(m => ({
+      .map((m) => ({
         marcaje_id: m.id,
         fecha: m.fecha,
         hora: m.hora,
