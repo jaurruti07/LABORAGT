@@ -13,7 +13,18 @@ Object.assign(App, {
           <p class="perf-sub">Indicadores de tu jornada este mes</p>
         </div>
         <div class="perf-body" id="perf-content">
-          <p style="color:var(--color-text-secondary);text-align:center;padding:24px">Cargando métricas…</p>
+          <div class="loader" role="status" aria-live="polite">
+            <div class="loader-ring" aria-hidden="true"></div>
+            <div class="skeleton-stack" aria-hidden="true">
+              <div class="skeleton-block sk-title"></div>
+              <div class="skeleton-block sk-line"></div>
+              <div class="skeleton-block sk-card"></div>
+              <div class="skeleton-block sk-card short"></div>
+              <div class="skeleton-block sk-card short"></div>
+            </div>
+            <p class="loader-text">Calculando métricas…</p>
+            <span class="loader-brand">LABORAGT</span>
+          </div>
         </div>
       </div>`;
 
