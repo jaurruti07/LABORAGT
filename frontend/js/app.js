@@ -57,7 +57,8 @@ const App = {
       const activacion = document.getElementById('activacion').value.trim();
       const btn = document.getElementById('btn-login');
       btn.disabled = true;
-      btn.textContent = 'Verificando…';
+      btn.classList.add('is-loading');
+      btn.setAttribute('aria-busy', 'true');
       try {
         const res = await API.login(codigo, activacion);
         API.setToken(res.token);
@@ -76,7 +77,20 @@ const App = {
           <h1>LaboraGT</h1>
           <button class="btn btn-secondary" style="width:auto;min-height:36px;padding:8px 12px;font-size:13px" onclick="Auth.logout()">Salir</button>
         </div>
-        <div id="dashboard-content"><p style="color:var(--color-text-secondary)">Cargando…</p></div>
+        <div id="dashboard-content">
+          <div class="loader" role="status" aria-live="polite">
+            <div class="loader-ring" aria-hidden="true"></div>
+            <div class="skeleton-stack" aria-hidden="true">
+              <div class="skeleton-block sk-title"></div>
+              <div class="skeleton-block sk-line"></div>
+              <div class="skeleton-block sk-card"></div>
+              <div class="skeleton-block sk-card short"></div>
+              <div class="skeleton-block sk-card short"></div>
+            </div>
+            <p class="loader-text">Cargando tu jornada…</p>
+            <span class="loader-brand">LABORAGT</span>
+          </div>
+        </div>
       </div>`;
     try {
       const res = await API.getToday();
@@ -267,7 +281,8 @@ const App = {
 
       btn.onclick = async () => {
         btn.disabled = true;
-        btn.textContent = 'Registrando…';
+        btn.classList.add('is-loading');
+        btn.setAttribute('aria-busy', 'true');
         setStep('c-val', 'loading');
         status.className = 'mark-status';
         status.textContent = 'Enviando marcaje al servidor…';
