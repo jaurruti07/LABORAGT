@@ -202,5 +202,11 @@ module.exports = {
       )
       .forEach((p) => (p.tipos_cubiertos || []).forEach((t) => set.add(t)));
     return [...set];
+  },
+  updatePermission(perm) {
+    const idx = permissionStore.findIndex((p) => p.id === perm.id);
+    if (idx >= 0) permissionStore[idx] = perm;
+    else permissionStore.push(perm);
+    return perm;
   }
 };
