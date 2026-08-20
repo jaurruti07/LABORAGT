@@ -1,18 +1,32 @@
 /**
- * Config panel admin — API por defecto en Render
+ * Config panel admin
  */
 const CONFIG = {
   API_BASE: (function () {
+    const DEFAULT = 'https://laboragt-api.onrender.com/api/v1';
     try {
       const params = new URLSearchParams(window.location.search);
+      if (params.get('api') === 'reset') {
+        localStorage.removeItem('laboragt_admin_api');
+        return DEFAULT;
+      }
       if (params.get('api')) {
-        localStorage.setItem('laboragt_admin_api', params.get('api'));
-        return params.get('api').replace(/\/$/, '') + '/api/v1';
+        const base = params.get('api').replace(/\/$/, '');
+        localStorage.setItem('laboragt_admin_api', base);
+        return base + '/api/v1';
       }
       const stored = localStorage.getItem('laboragt_admin_api');
-      if (stored) return stored.replace(/\/$/, '') + '/api/v1';
+      if (stored) {
+        const isLocal = /localhost|127\.0\.0\.1/.test(stored);
+        const onPages = /github\.io/.test(window.location.hostname);
+        if (isLocal && onPages) {
+          localStorage.removeItem('laboragt_admin_api');
+          return DEFAULT;
+        }
+        return stored.replace(/\/$/, '') + '/api/v1';
+      }
     } catch (e) {}
-    return 'https://laboragt-api.onrender.com/api/v1';
+    return DEFAULT;
   })(),
   STORAGE_KEY: 'laboragt_admin_token',
   USER_KEY: 'laboragt_admin_user'
