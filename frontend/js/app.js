@@ -137,7 +137,7 @@ const App = {
           ? `<button class="btn btn-primary btn-mark-pulse" id="btn-marcar">${btnLabel}</button>`
           : `<button class="btn btn-primary" disabled>Jornada finalizada</button>`}
         <div class="nav-secondary">
-          <button class="btn btn-secondary" disabled>Historial</button>
+          <button class="btn btn-secondary" id="btn-historial">Mi rendimiento</button>
           <button class="btn btn-secondary" disabled>Permisos</button>
         </div>
       </div>`;
@@ -145,6 +145,8 @@ const App = {
     if (siguiente) {
       document.getElementById('btn-marcar').addEventListener('click', () => this.startMarkingFlow(siguiente));
     }
+    const histBtn = document.getElementById('btn-historial');
+    if (histBtn) histBtn.addEventListener('click', () => this.showPerformance());
   },
 
   getGreeting() {
