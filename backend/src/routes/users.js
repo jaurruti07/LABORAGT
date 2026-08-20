@@ -5,13 +5,13 @@
 const express = require('express');
 const router = express.Router();
 const { authenticate } = require('../middleware/auth');
-const mock = require('../repositories/mockData');
+const data = require('../repositories');
 
 router.use(authenticate);
 
 router.get('/me', (req, res) => {
   try {
-    const user = mock.findUserById(req.user.id);
+    const user = data.findUserById(req.user.id);
     if (!user) {
       return res.status(404).json({ success: false, error: 'Usuario no encontrado' });
     }
