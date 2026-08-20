@@ -101,5 +101,31 @@ const API = {
 
   getStats() {
     return this.request('/attendance/stats');
+  },
+
+  getPermissionMotivos() {
+    return this.request('/permissions/motivos');
+  },
+
+  getMyPermissions() {
+    return this.request('/permissions/mine');
+  },
+
+  createPermission(body) {
+    return this.request('/permissions', {
+      method: 'POST',
+      body: JSON.stringify(body)
+    });
+  },
+
+  getTeamPermissions() {
+    return this.request('/permissions/team');
+  },
+
+  decidePermission(id, decision, comentario) {
+    return this.request('/permissions/' + id + '/decide', {
+      method: 'POST',
+      body: JSON.stringify({ decision, comentario })
+    });
   }
 };
