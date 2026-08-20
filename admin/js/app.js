@@ -43,7 +43,7 @@ const AdminApp = {
       btn.textContent = 'Verificando…';
       try {
         const res = await API.login(codigo, activacion);
-        if (!['jefe', 'admin', 'auditor'].includes(res.user.rol)) {
+        if (!['jefe', 'admin', 'administrador', 'auditor'].includes(res.user.rol)) {
           throw new Error('Este usuario no tiene acceso al panel administrativo');
         }
         API.setToken(res.token);
@@ -138,7 +138,10 @@ const AdminApp = {
           <div class="kpi-card"><div class="label">Fuera de ubicación</div><div class="value danger">${d.fuera_ubicacion}</div></div>
           <div class="kpi-card"><div class="label">Cumplimiento</div><div class="value success">${d.cumplimiento_pct}%</div></div>
           <div class="kpi-card"><div class="label">Incidencias</div><div class="value">${d.incidencias_pendientes}</div></div>
-        </div>`;
+        </div>
+        <p style="margin-top:12px;font-size:12px;color:#94a3b8">
+          Fuente: ${d.data_source || 'mock'} · ${d.fecha || ''} · ${d.timezone || 'America/Guatemala'}
+        </p>`;
     } catch (err) {
       if (err.status === 401 || err.status === 403) { API.clearAuth(); this.showLogin(err.message); return; }
       el.innerHTML = `<div class="error-box">${err.message}</div>`;
