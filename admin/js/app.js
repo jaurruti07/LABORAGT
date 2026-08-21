@@ -22,21 +22,28 @@ const AdminApp = {
     this.root.innerHTML = `
       <div class="login-wrap">
         <div class="login-card">
-          <h1>LaboraGT Admin</h1>
-          <p class="sub">Panel de administración</p>
+          <div class="login-brand-mark" aria-hidden="true">
+            <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
+              <rect width="40" height="40" rx="10" fill="#0F4C81"/>
+              <path d="M12 22h16M20 12v16" stroke="#5EEAD4" stroke-width="2.5" stroke-linecap="round"/>
+              <circle cx="20" cy="20" r="6" stroke="#fff" stroke-width="1.5" opacity="0.5"/>
+            </svg>
+          </div>
+          <h1>LaboraGT</h1>
+          <p class="sub">Panel de administración institucional</p>
           ${errorMsg ? `<div class="error-box">${errorMsg}</div>` : ''}
           <form id="login-form">
             <div class="form-group">
-              <label>Código de empleado o DPI</label>
-              <input id="codigo" type="text" required placeholder="EMP-002" />
+              <label for="codigo">Código de empleado o DPI</label>
+              <input id="codigo" type="text" required placeholder="EMP-002" autocomplete="username" />
             </div>
             <div class="form-group">
-              <label>Código de activación</label>
-              <input id="activacion" type="text" required placeholder="ACT-2026" />
+              <label for="activacion">Código de activación</label>
+              <input id="activacion" type="text" required placeholder="ACT-2026" autocomplete="current-password" />
             </div>
-            <button type="submit" class="btn btn-primary" id="btn-login">Ingresar</button>
+            <button type="submit" class="btn btn-primary" id="btn-login">Ingresar al panel</button>
           </form>
-          <p style="margin-top:16px;font-size:12px;color:#94a3b8">Demo jefe: EMP-002 / ACT-2026</p>
+          <p class="login-hint">Acceso restringido a jefes, administradores y auditores.<br>Demo: <code>EMP-002</code> / <code>ACT-2026</code></p>
         </div>
       </div>`;
 
@@ -63,29 +70,62 @@ const AdminApp = {
 
   showLayout() {
     const user = API.getUser() || {};
+    const rolLabel = {
+      jefe: 'Jefe inmediato',
+      admin: 'Administrador',
+      administrador: 'Administrador',
+      auditor: 'Auditor'
+    }[user.rol] || user.rol || '';
+
     this.root.innerHTML = `
       <div class="layout">
         <aside class="sidebar">
-          <div class="sidebar-brand">LaboraGT</div>
+          <div class="sidebar-brand">
+            <span class="brand-mark">LG</span>
+            <div>
+              <strong>LaboraGT</strong>
+              <small>Control de jornada</small>
+            </div>
+          </div>
           <nav>
-            <a href="#" data-page="dashboard" class="active">Dashboard</a>
-            <a href="#" data-page="users">Usuarios</a>
-            <a href="#" data-page="attendance">Marcajes</a>
-            <a href="#" data-page="incidents">Incidencias</a>
-            <a href="#" data-page="permissions">Permisos</a>
+            <a href="#" data-page="dashboard" class="active">
+              <span class="nav-icon" aria-hidden="true">▣</span> Inicio
+            </a>
+            <a href="#" data-page="users">
+              <span class="nav-icon" aria-hidden="true">◎</span> Usuarios
+            </a>
+            <a href="#" data-page="attendance">
+              <span class="nav-icon" aria-hidden="true">◷</span> Marcajes
+            </a>
+            <a href="#" data-page="incidents">
+              <span class="nav-icon" aria-hidden="true">⚠</span> Incidencias
+            </a>
+            <a href="#" data-page="permissions">
+              <span class="nav-icon" aria-hidden="true">✉</span> Permisos
+            </a>
           </nav>
           <div class="sidebar-footer">
-            ${user.nombre || ''} ${user.apellidos || ''}<br>
-            <span style="opacity:0.7">${user.rol || ''}</span><br>
-            <a href="#" id="btn-logout" style="color:#fff;margin-top:8px;display:inline-block">Cerrar sesión</a>
+            <div class="user-chip">
+              <div class="user-avatar">${(user.nombre || 'A').charAt(0)}</div>
+              <div class="user-meta">
+                <strong>${user.nombre || ''} ${user.apellidos || ''}</strong>
+                <span>${rolLabel}</span>
+              </div>
+            </div>
+            <a href="#" id="btn-logout" class="logout-link">Cerrar sesión</a>
           </div>
         </aside>
         <div class="main">
           <div class="topbar">
-            <h2 id="page-title">Dashboard</h2>
-            <span style="font-size:13px;color:#64748b" id="topbar-date"></span>
+            <div>
+              <h2 id="page-title">Inicio</h2>
+              <p class="topbar-sub" id="topbar-date"></p>
+            </div>
+            <div class="topbar-right">
+              <span class="tz-badge" title="Zona horaria institucional">America/Guatemala</span>
+            </div>
           </div>
-          <div class="content" id="page-content"><p>Cargando…</p></div>
+          <div class="content" id="page-content"><p class="loading-inline">Cargando…</p></div>
         </div>
       </div>
       <div id="modal-root"></div>`;
@@ -94,7 +134,7 @@ const AdminApp = {
       new Date().toLocaleDateString('es-GT', {
         timeZone: 'America/Guatemala',
         weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
-      }) + ' · America/Guatemala';
+      });
 
     document.querySelectorAll('.sidebar nav a').forEach(a => {
       a.addEventListener('click', (e) => {
@@ -117,7 +157,7 @@ const AdminApp = {
   navigate(page) {
     this.currentPage = page;
     const titles = {
-      dashboard: 'Dashboard',
+      dashboard: 'Inicio',
       users: 'Usuarios',
       attendance: 'Marcajes',
       incidents: 'Incidencias',
@@ -133,33 +173,192 @@ const AdminApp = {
 
   async loadDashboard() {
     const el = document.getElementById('page-content');
-    el.innerHTML = '<p>Cargando indicadores…</p>';
+    const user = API.getUser() || {};
+    el.innerHTML = `
+      <div class="dash-loading">
+        <div class="skeleton-kpi"></div>
+        <div class="skeleton-kpi"></div>
+        <div class="skeleton-kpi"></div>
+        <div class="skeleton-kpi"></div>
+      </div>`;
+
     try {
       const res = await API.getDashboard();
       const d = res.data;
+      const saludo = this.getGreeting();
+      const incidencias = d.ultimas_incidencias || [];
+      const cumplimiento = d.cumplimiento_pct ?? 0;
+      const cumplimientoCls =
+        cumplimiento >= 90 ? 'success' : cumplimiento >= 70 ? 'warning' : 'danger';
+
       el.innerHTML = `
-        <div class="kpi-grid">
-          <div class="kpi-card"><div class="label">Colaboradores activos</div><div class="value">${d.colaboradores_activos}</div></div>
-          <div class="kpi-card"><div class="label">Marcajes del día</div><div class="value">${d.marcajes_hoy}</div></div>
-          <div class="kpi-card"><div class="label">Entradas tardías</div><div class="value warning">${d.entradas_tardias}</div></div>
-          <div class="kpi-card"><div class="label">Fuera de ubicación</div><div class="value danger">${d.fuera_ubicacion}</div></div>
-          <div class="kpi-card"><div class="label">Cumplimiento</div><div class="value success">${d.cumplimiento_pct}%</div></div>
-          <div class="kpi-card"><div class="label">Incidencias</div><div class="value">${d.incidencias_pendientes}</div></div>
-        </div>
-        <p style="margin-top:12px;font-size:12px;color:#94a3b8">
-          Fuente: ${d.data_source || 'mock'} · ${d.fecha || ''} · ${d.timezone || 'America/Guatemala'}
-        </p>`;
+        <section class="dash-hero">
+          <div class="dash-hero-text">
+            <p class="dash-eyebrow">Resumen operativo del día</p>
+            <h3>${saludo}, ${user.nombre || 'Administrador'}</h3>
+            <p class="dash-desc">
+              Monitoreo de jornada laboral · ${d.fecha || '—'} ·
+              <span class="src-pill">${d.data_source || 'mock'}</span>
+            </p>
+          </div>
+          <div class="dash-hero-actions">
+            <button type="button" class="btn btn-secondary btn-sm" data-goto="attendance">Ver marcajes</button>
+            <button type="button" class="btn btn-primary btn-sm" data-goto="permissions">Revisar permisos</button>
+          </div>
+        </section>
+
+        <section class="kpi-grid">
+          <article class="kpi-card">
+            <div class="kpi-icon kpi-icon-blue" aria-hidden="true">👥</div>
+            <div class="kpi-body">
+              <div class="label">Colaboradores activos</div>
+              <div class="value">${d.colaboradores_activos}</div>
+            </div>
+          </article>
+          <article class="kpi-card">
+            <div class="kpi-icon kpi-icon-teal" aria-hidden="true">◷</div>
+            <div class="kpi-body">
+              <div class="label">Marcajes del día</div>
+              <div class="value">${d.marcajes_hoy}</div>
+            </div>
+          </article>
+          <article class="kpi-card">
+            <div class="kpi-icon kpi-icon-amber" aria-hidden="true">⏱</div>
+            <div class="kpi-body">
+              <div class="label">Entradas tardías</div>
+              <div class="value warning">${d.entradas_tardias}</div>
+            </div>
+          </article>
+          <article class="kpi-card">
+            <div class="kpi-icon kpi-icon-red" aria-hidden="true">📍</div>
+            <div class="kpi-body">
+              <div class="label">Fuera de ubicación</div>
+              <div class="value danger">${d.fuera_ubicacion}</div>
+            </div>
+          </article>
+          <article class="kpi-card">
+            <div class="kpi-icon kpi-icon-green" aria-hidden="true">✓</div>
+            <div class="kpi-body">
+              <div class="label">Cumplimiento</div>
+              <div class="value ${cumplimientoCls}">${cumplimiento}%</div>
+              <div class="kpi-bar"><span style="width:${Math.min(100, cumplimiento)}%" class="${cumplimientoCls}"></span></div>
+            </div>
+          </article>
+          <article class="kpi-card">
+            <div class="kpi-icon kpi-icon-violet" aria-hidden="true">✉</div>
+            <div class="kpi-body">
+              <div class="label">Permisos pendientes</div>
+              <div class="value">${d.permisos_activos ?? 0}</div>
+            </div>
+          </article>
+        </section>
+
+        <div class="dash-grid">
+          <section class="card">
+            <div class="card-header card-header-flex">
+              <span>Últimas incidencias del día</span>
+              <button type="button" class="btn-link" data-goto="incidents">Ver todas</button>
+            </div>
+            ${incidencias.length
+              ? `<div class="table-wrap"><table>
+                  <thead>
+                    <tr><th>Hora</th><th>Colaborador</th><th>Tipo</th><th>Estado</th><th>Detalle</th></tr>
+                  </thead>
+                  <tbody>
+                    ${incidencias.map((m) => `
+                      <tr>
+                        <td class="mono">${(m.hora || '').slice(0, 8)}</td>
+                        <td>${m.usuario || '—'}</td>
+                        <td>${m.tipo || '—'}</td>
+                        <td>${this.badgeEstado(m.estado)}</td>
+                        <td class="muted-cell">${m.detalle || '—'}</td>
+                      </tr>`).join('')}
+                  </tbody>
+                </table></div>`
+              : `<div class="empty-state">
+                  <div class="empty-icon">✓</div>
+                  <p>Sin incidencias registradas hoy</p>
+                  <span>Los marcajes válidos no generan alertas</span>
+                </div>`}
+          </section>
+
+          <section class="card side-panel">
+            <div class="card-header">Accesos rápidos</div>
+            <div class="quick-list">
+              <button type="button" class="quick-item" data-goto="users">
+                <span class="qi-icon">◎</span>
+                <span>
+                  <strong>Gestionar usuarios</strong>
+                  <small>Alta, edición y estados</small>
+                </span>
+              </button>
+              <button type="button" class="quick-item" data-goto="attendance">
+                <span class="qi-icon">◷</span>
+                <span>
+                  <strong>Consultar marcajes</strong>
+                  <small>Filtro por fecha y colaborador</small>
+                </span>
+              </button>
+              <button type="button" class="quick-item" data-goto="permissions">
+                <span class="qi-icon">✉</span>
+                <span>
+                  <strong>Autorizar permisos</strong>
+                  <small>Enfermedad, IGSS, citación</small>
+                </span>
+              </button>
+              <button type="button" class="quick-item" data-goto="incidents">
+                <span class="qi-icon">⚠</span>
+                <span>
+                  <strong>Revisar incidencias</strong>
+                  <small>Tardanzas y ubicación</small>
+                </span>
+              </button>
+            </div>
+            <div class="side-meta">
+              <div><span>Zona horaria</span><strong>America/Guatemala</strong></div>
+              <div><span>Fuente de datos</span><strong>${d.data_source || 'mock'}</strong></div>
+              <div><span>Incidencias abiertas</span><strong>${d.incidencias_pendientes ?? 0}</strong></div>
+            </div>
+          </section>
+        </div>`;
+
+      el.querySelectorAll('[data-goto]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const page = btn.dataset.goto;
+          document.querySelectorAll('.sidebar nav a').forEach((a) => {
+            a.classList.toggle('active', a.dataset.page === page);
+          });
+          this.navigate(page);
+        });
+      });
     } catch (err) {
-      if (err.status === 401 || err.status === 403) { API.clearAuth(); this.showLogin(err.message); return; }
+      if (err.status === 401 || err.status === 403) {
+        API.clearAuth();
+        this.showLogin(err.message);
+        return;
+      }
       el.innerHTML = `<div class="error-box">${err.message}</div>`;
     }
+  },
+
+  getGreeting() {
+    const h = Number(
+      new Date().toLocaleString('en-US', {
+        timeZone: 'America/Guatemala',
+        hour: 'numeric',
+        hour12: false
+      })
+    );
+    if (h < 12) return 'Buenos días';
+    if (h < 19) return 'Buenas tardes';
+    return 'Buenas noches';
   },
 
   /* ---------- USUARIOS CRUD ---------- */
 
   async loadUsers() {
     const el = document.getElementById('page-content');
-    el.innerHTML = '<p>Cargando usuarios…</p>';
+    el.innerHTML = '<p class="loading-inline">Cargando usuarios…</p>';
     try {
       const res = await API.getUsers();
       this.usersCache = res.data || [];
@@ -465,7 +664,7 @@ const AdminApp = {
         <input type="date" id="filter-fecha" value="${today}" />
         <button class="btn btn-primary" style="width:auto" id="btn-filtrar">Filtrar</button>
       </div>
-      <div id="attendance-table"><p>Cargando…</p></div>`;
+      <div id="attendance-table"><p class="loading-inline">Cargando…</p></div>`;
     const load = async () => {
       try {
         const res = await API.getAttendance({ fecha: document.getElementById('filter-fecha').value });
@@ -493,7 +692,7 @@ const AdminApp = {
 
   async loadIncidents() {
     const el = document.getElementById('page-content');
-    el.innerHTML = '<p>Cargando…</p>';
+    el.innerHTML = '<p class="loading-inline">Cargando…</p>';
     try {
       const res = await API.getIncidents();
       const list = res.data || [];
@@ -510,7 +709,7 @@ const AdminApp = {
 
   async loadPermissions() {
     const el = document.getElementById('page-content');
-    el.innerHTML = '<p>Cargando solicitudes…</p>';
+    el.innerHTML = '<p class="loading-inline">Cargando solicitudes…</p>';
     try {
       const res = await API.getTeamPermissions();
       const list = res.data || [];
