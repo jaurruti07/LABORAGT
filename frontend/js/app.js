@@ -14,6 +14,12 @@ const App = {
   showLogin(errorMsg = '') {
     this.root.innerHTML = `
       <div class="screen login-screen">
+        <a class="admin-entry" href="../admin/" title="Panel administrativo" aria-label="Acceso al panel administrativo">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <rect x="5" y="11" width="14" height="10" rx="2" stroke="currentColor" stroke-width="1.75"/>
+            <path d="M8 11V8a4 4 0 0 1 8 0v3" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/>
+          </svg>
+        </a>
         <div class="login-hero">
           <div class="login-visual" aria-hidden="true">
             <svg viewBox="0 0 88 88" fill="none" xmlns="http://www.w3.org/2000/svg">
